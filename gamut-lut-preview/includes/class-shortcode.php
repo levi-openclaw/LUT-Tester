@@ -120,9 +120,10 @@ class Gamut_LUT_Shortcode {
             'restUrl'   => esc_url_raw( rest_url( 'gamut/v1' ) ),
             'nonce'     => wp_create_nonce( 'wp_rest' ),
             'cartNonce' => wp_create_nonce( 'gamut_lut_nonce' ),
-            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-            'pageUrl'   => get_permalink(),
-            'settings'  => array(
+            'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+            'pageUrl'    => get_permalink(),
+            'isLoggedIn' => is_user_logged_in(),
+            'settings'   => array(
                 'title'             => get_option( 'gamut_lut_title', 'Preview Our LUTs' ),
                 'description'       => get_option( 'gamut_lut_description', '' ),
                 'imagesTitle'       => get_option( 'gamut_lut_images_title', 'Select an Image' ),

@@ -121,7 +121,7 @@
     background: #000;
     line-height: 0;
     overflow: hidden;
-    touch-action: none;
+    touch-action: pan-y; /* Allow vertical scrolling, gestures handled in JS */
 }
 
 .gamut-lut__canvas-wrap canvas {
@@ -152,13 +152,23 @@
     gap: 8px;
 }
 
+/* Hidden by default — revealed via JS with animated transition */
 .gamut-lut__control-group--lut,
 .gamut-lut__control-group--intensity,
 .gamut-lut__control-group--compare,
-.gamut-lut__control-group--ab-compare,
 .gamut-lut__control-group--lut-b,
 .gamut-lut__control-group--share {
-    display: none; /* Shown via JS when relevant */
+    display: flex;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.gamut-lut__control-group--visible {
+    max-height: 200px;
+    opacity: 1;
+    overflow: visible;
 }
 
 .gamut-lut__label {
@@ -225,7 +235,7 @@
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    max-width: 185px;
+    max-width: 100%;
     height: 5px;
     border-radius: 5px;
     background: linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) 100%, var(--gamut-slider-track) 100%, var(--gamut-slider-track) 100%);
@@ -327,9 +337,75 @@
     font-weight: 400;
     line-height: 13px;
     letter-spacing: 0.5px;
-    color: var(--gamut-text);
-    cursor: pointer;
 }
+
+/* ========================================
+   Segmented Control (Compare Mode)
+   ======================================== */
+.gamut-lut__segmented {
+    display: flex;
+    background: var(--gamut-bg-input);
+    border-radius: var(--gamut-border-radius);
+    overflow: hidden;
+}
+
+.gamut-lut__segment {
+    flex: 1;
+    padding: 8px 6px;
+    background: transparent;
+    border: none;
+    color: var(--gamut-text-muted);
+    font-family: var(--gamut-font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: background-color var(--gamut-transition), color var(--gamut-transition);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.gamut-lut__segment:hover {
+    color: var(--gamut-text);
+}
+
+.gamut-lut__segment--active {
+    background: var(--gamut-accent);
+    color: var(--gamut-text);
+}
+
+.gamut-lut__segment:focus-visible {
+    outline: 2px solid var(--gamut-accent);
+    outline-offset: -2px;
+}
+
+/* ========================================
+   LUT Name Toast Overlay
+   ======================================== */
+.gamut-lut__lut-toast {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-family: var(--gamut-font-label);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 8;
+    white-space: nowrap;
+}
+
+.gamut-lut__lut-toast--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 
 /* ========================================
    Comparison Slider
@@ -494,32 +570,40 @@
    ======================================== */
 .gamut-lut__share-btn {
     width: 100%;
-    padding: 10px 20px;
+    padding: 8px 16px;
     background-color: transparent;
-    border: 1px solid var(--gamut-accent);
+    border: 1px solid rgba(160, 149, 85, 0.4);
     border-radius: var(--gamut-border-radius);
-    color: var(--gamut-accent);
+    color: var(--gamut-text-muted);
     font-family: var(--gamut-font-label);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background-color var(--gamut-transition), color var(--gamut-transition);
+    transition: border-color var(--gamut-transition), color var(--gamut-transition);
 }
 
 .gamut-lut__share-btn:hover {
-    background-color: var(--gamut-accent);
-    color: var(--gamut-text);
+    border-color: var(--gamut-accent);
+    color: var(--gamut-accent);
 }
 
 .gamut-lut__share-message {
-    display: none;
     margin-top: 6px;
     font-family: var(--gamut-font-body);
     font-size: 12px;
     color: var(--gamut-accent);
     text-align: center;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+.gamut-lut__share-message--visible {
+    opacity: 1;
+    max-height: 30px;
 }
 
 /* ========================================
@@ -843,7 +927,7 @@
    ======================================== */
 @media (max-width: 992px) {
     .gamut-lut__main {
-        flex-direction: column-reverse;
+        flex-direction: column;
     }
 
     .gamut-lut__preview {

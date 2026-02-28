@@ -38,6 +38,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 <div class="gamut-lut__loading">
                     <div class="gamut-lut__spinner"></div>
                 </div>
+                <div class="gamut-lut__lut-toast" aria-live="polite"></div>
             </div>
 
             <!-- Comparison Slider (hidden until compare mode enabled) -->
@@ -129,26 +130,20 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 </div>
             </div>
 
-            <!-- Compare Before/After (hidden until LUT chosen) -->
+            <!-- Compare Mode Selector (hidden until LUT chosen) -->
             <div class="gamut-lut__control-group gamut-lut__control-group--compare">
-                <label class="gamut-lut__checkbox-wrap">
-                    <input type="checkbox"
-                           id="gamut-lut-compare"
-                           class="gamut-lut__checkbox"
-                           aria-label="<?php esc_attr_e( 'Show before and after comparison', 'gamut-lut-preview' ); ?>">
-                    <span class="gamut-lut__checkbox-label"><?php esc_html_e( 'Show Before & After', 'gamut-lut-preview' ); ?></span>
-                </label>
-            </div>
-
-            <!-- A/B Compare Two LUTs (hidden until LUT chosen) -->
-            <div class="gamut-lut__control-group gamut-lut__control-group--ab-compare">
-                <label class="gamut-lut__checkbox-wrap">
-                    <input type="checkbox"
-                           id="gamut-lut-ab-compare"
-                           class="gamut-lut__checkbox"
-                           aria-label="<?php esc_attr_e( 'Compare two LUTs side by side', 'gamut-lut-preview' ); ?>">
-                    <span class="gamut-lut__checkbox-label"><?php esc_html_e( 'Compare Two LUTs', 'gamut-lut-preview' ); ?></span>
-                </label>
+                <label class="gamut-lut__label"><?php esc_html_e( 'Compare', 'gamut-lut-preview' ); ?></label>
+                <div class="gamut-lut__segmented" role="radiogroup" aria-label="<?php esc_attr_e( 'Compare mode', 'gamut-lut-preview' ); ?>">
+                    <button type="button" class="gamut-lut__segment gamut-lut__segment--active" data-mode="none" role="radio" aria-checked="true">
+                        <?php esc_html_e( 'Off', 'gamut-lut-preview' ); ?>
+                    </button>
+                    <button type="button" class="gamut-lut__segment" data-mode="before-after" role="radio" aria-checked="false">
+                        <?php esc_html_e( 'Before / After', 'gamut-lut-preview' ); ?>
+                    </button>
+                    <button type="button" class="gamut-lut__segment" data-mode="ab" role="radio" aria-checked="false">
+                        <?php esc_html_e( 'A / B LUT', 'gamut-lut-preview' ); ?>
+                    </button>
+                </div>
             </div>
 
             <!-- Second LUT selector for A/B mode (hidden until A/B enabled) -->

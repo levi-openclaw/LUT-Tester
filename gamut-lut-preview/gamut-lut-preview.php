@@ -41,6 +41,7 @@ require_once GAMUT_LUT_PATH . 'includes/class-shortcode.php';
 require_once GAMUT_LUT_PATH . 'includes/class-cart.php';
 require_once GAMUT_LUT_PATH . 'includes/class-bulk-upload.php';
 require_once GAMUT_LUT_PATH . 'includes/class-analytics.php';
+require_once GAMUT_LUT_PATH . 'includes/class-favorites.php';
 
 /**
  * Initialize all plugin classes.
@@ -55,6 +56,7 @@ function gamut_lut_init() {
     new Gamut_LUT_Cart();
     new Gamut_LUT_Bulk_Upload();
     new Gamut_LUT_Analytics();
+    new Gamut_LUT_Favorites();
 }
 add_action( 'plugins_loaded', 'gamut_lut_init' );
 

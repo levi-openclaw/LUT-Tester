@@ -5,7 +5,7 @@
  * the LUT engine, comparison slider, and cart integration.
  *
  * Features:
- * - Favorites / Shortlist (localStorage)
+ * - Favorites / Shortlist (localStorage + user meta sync)
  * - A/B Split View (compare two LUTs)
  * - Collection embed mode
  * - Collection bundling / upsell
@@ -35,21 +35,26 @@ var GamutLutPreview = (function() {
         selectedLutB: null,
         activeCategory: '',
         intensity: 100,
-        compareMode: false,
-        abCompareMode: false,
+        compareMode: 'none', // 'none' | 'before-after' | 'ab'
         showFavoritesOnly: false,
         favorites: [],
         isLoading: false,
         cubeCache: new Map(),
         sessionId: '',
-        gestureState: null
+        gestureState: null,
+        favoriteSyncPending: false
     };
 
     // Engine and slider instances.
     var engine = null;
-    var engineB = null;
     var slider = null;
     var abSlider = null;
+
+    // LUT toast timeout.
+    var toastTimeout = null;
+
+    // Favorites save debounce timer.
+    var favSaveTimeout = null;
 
     // Config from wp_localize_script.
     var config = null;
@@ -66,8 +71,8 @@ var GamutLutPreview = (function() {
         // Generate a session ID for analytics deduplication.
         state.sessionId = generateSessionId();
 
-        // Load favorites from localStorage.
-        loadFavorites();
+        // Load favorites from localStorage first (instant).
+        loadFavoritesLocal();
 
         cacheDom();
 
@@ -84,6 +89,11 @@ var GamutLutPreview = (function() {
         initMobileGestures();
         parseShareUrl();
         fetchData();
+
+        // If logged in, sync favorites from server (merge with localStorage).
+        if (config.isLoggedIn) {
+            syncFavoritesFromServer();
+        }
     }
 
     /**
@@ -105,12 +115,12 @@ var GamutLutPreview = (function() {
         dom.intensitySlider = document.getElementById('gamut-lut-intensity');
         dom.intensityValue = dom.root.querySelector('.gamut-lut__intensity-value');
         dom.intensityGroup = dom.root.querySelector('.gamut-lut__control-group--intensity');
-        dom.compareCheckbox = document.getElementById('gamut-lut-compare');
-        dom.compareGroup = dom.root.querySelector('.gamut-lut__control-group--compare');
 
-        // A/B Compare controls.
-        dom.abCompareCheckbox = document.getElementById('gamut-lut-ab-compare');
-        dom.abCompareGroup = dom.root.querySelector('.gamut-lut__control-group--ab-compare');
+        // Segmented compare control.
+        dom.compareGroup = dom.root.querySelector('.gamut-lut__control-group--compare');
+        dom.segmented = dom.root.querySelector('.gamut-lut__segmented');
+
+        // LUT B dropdown.
         dom.lutSelectB = document.getElementById('gamut-lut-select-b');
         dom.lutSelectBGroup = dom.root.querySelector('.gamut-lut__control-group--lut-b');
 
@@ -119,6 +129,9 @@ var GamutLutPreview = (function() {
 
         // A/B comparison container.
         dom.abComparison = dom.root.querySelector('.gamut-lut__ab-comparison');
+
+        // LUT name toast.
+        dom.lutToast = dom.root.querySelector('.gamut-lut__lut-toast');
 
         // Image grid.
         dom.grid = dom.root.querySelector('.gamut-lut__grid');
@@ -159,9 +172,6 @@ var GamutLutPreview = (function() {
         if (dom.intensitySlider) {
             dom.intensitySlider.addEventListener('input', onIntensityChange);
         }
-        if (dom.compareCheckbox) {
-            dom.compareCheckbox.addEventListener('change', onCompareToggle);
-        }
         if (dom.categoryFilter) {
             dom.categoryFilter.addEventListener('change', onCategoryChange);
         }
@@ -171,14 +181,19 @@ var GamutLutPreview = (function() {
         if (dom.favoritesToggle) {
             dom.favoritesToggle.addEventListener('click', onFavoritesToggle);
         }
-        if (dom.abCompareCheckbox) {
-            dom.abCompareCheckbox.addEventListener('change', onAbCompareToggle);
-        }
         if (dom.lutSelectB) {
             dom.lutSelectB.addEventListener('change', onLutBChange);
         }
         if (dom.shareBtn) {
             dom.shareBtn.addEventListener('click', onShareClick);
+        }
+
+        // Segmented compare control.
+        if (dom.segmented) {
+            var segments = dom.segmented.querySelectorAll('.gamut-lut__segment');
+            for (var i = 0; i < segments.length; i++) {
+                segments[i].addEventListener('click', onSegmentClick);
+            }
         }
     }
 
@@ -228,7 +243,7 @@ var GamutLutPreview = (function() {
     // ======================================================
 
     /**
-     * Render the image grid with favorite hearts.
+     * Render the image grid with favorite hearts and title tooltips.
      */
     function renderImageGrid() {
         if (!dom.grid) return;
@@ -237,7 +252,7 @@ var GamutLutPreview = (function() {
         state.images.forEach(function(img) {
             var catAttr = img.categories.join(' ');
             var isFav = state.favorites.indexOf(img.id) !== -1;
-            html += '<div class="gamut-lut__grid-item' + (isFav ? ' gamut-lut__grid-item--favorited' : '') + '" data-id="' + img.id + '" data-categories="' + catAttr + '">';
+            html += '<div class="gamut-lut__grid-item' + (isFav ? ' gamut-lut__grid-item--favorited' : '') + '" data-id="' + img.id + '" data-categories="' + catAttr + '" title="' + escapeAttr(img.title) + '">';
             html += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
             html += '<button type="button" class="gamut-lut__favorite-btn" aria-label="' + (isFav ? 'Remove from favorites' : 'Add to favorites') + '">';
             html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
@@ -330,15 +345,18 @@ var GamutLutPreview = (function() {
         if (dom.emptyState) dom.emptyState.style.display = 'none';
         if (dom.canvasWrap) dom.canvasWrap.style.display = 'block';
 
+        // Scroll preview into view smoothly.
+        scrollToPreview();
+
         // Load image into engine.
         if (engine) {
             setLoading(true);
             engine.loadImage(img.url).then(function() {
                 setLoading(false);
-                if (state.compareMode) {
+                if (state.compareMode === 'before-after') {
                     updateComparison();
                 }
-                if (state.abCompareMode) {
+                if (state.compareMode === 'ab') {
                     updateAbComparison();
                 }
             }).catch(function() {
@@ -348,6 +366,16 @@ var GamutLutPreview = (function() {
 
         // Track analytics.
         trackEvent('image_preview', img.id, img.title);
+    }
+
+    /**
+     * Scroll the preview area into view.
+     */
+    function scrollToPreview() {
+        var target = dom.canvasWrap || dom.root.querySelector('.gamut-lut__preview');
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     // ======================================================
@@ -364,12 +392,11 @@ var GamutLutPreview = (function() {
             state.selectedCollection = null;
             state.selectedLut = null;
             state.selectedLutB = null;
-            hideControlGroup(dom.lutSelectGroup);
-            hideControlGroup(dom.intensityGroup);
-            hideControlGroup(dom.compareGroup);
-            hideControlGroup(dom.abCompareGroup);
-            hideControlGroup(dom.lutSelectBGroup);
-            hideControlGroup(dom.shareGroup);
+            revealControlGroup(dom.lutSelectGroup, false);
+            revealControlGroup(dom.intensityGroup, false);
+            revealControlGroup(dom.compareGroup, false);
+            revealControlGroup(dom.lutSelectBGroup, false);
+            revealControlGroup(dom.shareGroup, false);
             hideCart();
             hideUpsell();
             return;
@@ -412,13 +439,12 @@ var GamutLutPreview = (function() {
             dom.lutSelectB.innerHTML = html;
         }
 
-        // Show LUT select group.
-        showControlGroup(dom.lutSelectGroup);
-        hideControlGroup(dom.intensityGroup);
-        hideControlGroup(dom.compareGroup);
-        hideControlGroup(dom.abCompareGroup);
-        hideControlGroup(dom.lutSelectBGroup);
-        hideControlGroup(dom.shareGroup);
+        // Show LUT select group, hide the rest.
+        revealControlGroup(dom.lutSelectGroup, true);
+        revealControlGroup(dom.intensityGroup, false);
+        revealControlGroup(dom.compareGroup, false);
+        revealControlGroup(dom.lutSelectBGroup, false);
+        revealControlGroup(dom.shareGroup, false);
 
         // Show/hide cart button based on product_id.
         if (col.product_id) {
@@ -442,10 +468,9 @@ var GamutLutPreview = (function() {
 
         if (!lutId || !state.selectedCollection) {
             state.selectedLut = null;
-            hideControlGroup(dom.intensityGroup);
-            hideControlGroup(dom.compareGroup);
-            hideControlGroup(dom.abCompareGroup);
-            hideControlGroup(dom.shareGroup);
+            revealControlGroup(dom.intensityGroup, false);
+            revealControlGroup(dom.compareGroup, false);
+            revealControlGroup(dom.shareGroup, false);
             return;
         }
 
@@ -478,11 +503,13 @@ var GamutLutPreview = (function() {
         // Load and apply the LUT.
         loadLutForPreview(lut);
 
-        // Show intensity, compare, A/B, and share controls.
-        showControlGroup(dom.intensityGroup);
-        showControlGroup(dom.compareGroup);
-        showControlGroup(dom.abCompareGroup);
-        showControlGroup(dom.shareGroup);
+        // Show controls with smooth reveal.
+        revealControlGroup(dom.intensityGroup, true);
+        revealControlGroup(dom.compareGroup, true);
+        revealControlGroup(dom.shareGroup, true);
+
+        // Show LUT name toast on canvas.
+        showLutToast(lut.title);
 
         // Track analytics.
         trackEvent('lut_preview', lut.id, lut.title, state.selectedCollection.slug);
@@ -525,10 +552,10 @@ var GamutLutPreview = (function() {
         engine.setIntensity(state.intensity / 100);
         engine.render();
 
-        if (state.compareMode) {
+        if (state.compareMode === 'before-after') {
             updateComparison();
         }
-        if (state.abCompareMode) {
+        if (state.compareMode === 'ab') {
             updateAbComparison();
         }
     }
@@ -574,11 +601,59 @@ var GamutLutPreview = (function() {
             engine.setIntensity(value / 100);
             engine.render();
 
-            if (state.compareMode) {
+            if (state.compareMode === 'before-after') {
                 updateComparison();
             }
-            if (state.abCompareMode) {
+            if (state.compareMode === 'ab') {
                 updateAbComparison();
+            }
+        }
+    }
+
+    // ======================================================
+    //  COMPARE MODE (segmented control)
+    // ======================================================
+
+    /**
+     * Handle segmented control click.
+     */
+    function onSegmentClick(e) {
+        var btn = e.currentTarget;
+        var mode = btn.getAttribute('data-mode');
+
+        setCompareMode(mode);
+    }
+
+    /**
+     * Set the compare mode and update UI.
+     */
+    function setCompareMode(mode) {
+        state.compareMode = mode;
+
+        // Update segmented control active state.
+        if (dom.segmented) {
+            var segments = dom.segmented.querySelectorAll('.gamut-lut__segment');
+            for (var i = 0; i < segments.length; i++) {
+                var isActive = segments[i].getAttribute('data-mode') === mode;
+                segments[i].classList.toggle('gamut-lut__segment--active', isActive);
+                segments[i].setAttribute('aria-checked', isActive ? 'true' : 'false');
+            }
+        }
+
+        // Hide both comparison views first.
+        hideComparison();
+        hideAbComparison();
+        revealControlGroup(dom.lutSelectBGroup, false);
+
+        if (mode === 'before-after') {
+            showComparison();
+        } else if (mode === 'ab') {
+            revealControlGroup(dom.lutSelectBGroup, true);
+            showAbComparison();
+        } else {
+            // 'none' — show the main canvas.
+            if (dom.canvasWrap && state.selectedImage) {
+                dom.canvasWrap.style.display = 'block';
             }
         }
     }
@@ -586,26 +661,6 @@ var GamutLutPreview = (function() {
     // ======================================================
     //  BEFORE/AFTER COMPARISON
     // ======================================================
-
-    /**
-     * Handle compare checkbox toggle.
-     */
-    function onCompareToggle() {
-        state.compareMode = dom.compareCheckbox.checked;
-
-        // Disable A/B compare if enabling before/after.
-        if (state.compareMode && state.abCompareMode) {
-            state.abCompareMode = false;
-            if (dom.abCompareCheckbox) dom.abCompareCheckbox.checked = false;
-            hideAbComparison();
-        }
-
-        if (state.compareMode) {
-            showComparison();
-        } else {
-            hideComparison();
-        }
-    }
 
     function showComparison() {
         if (!dom.comparison || !engine) return;
@@ -622,7 +677,6 @@ var GamutLutPreview = (function() {
 
     function hideComparison() {
         if (dom.comparison) dom.comparison.style.display = 'none';
-        if (dom.canvasWrap && state.selectedImage) dom.canvasWrap.style.display = 'block';
     }
 
     function updateComparison() {
@@ -638,28 +692,6 @@ var GamutLutPreview = (function() {
     // ======================================================
     //  A/B LUT COMPARISON
     // ======================================================
-
-    /**
-     * Handle A/B compare toggle.
-     */
-    function onAbCompareToggle() {
-        state.abCompareMode = dom.abCompareCheckbox.checked;
-
-        // Disable before/after if enabling A/B.
-        if (state.abCompareMode && state.compareMode) {
-            state.compareMode = false;
-            if (dom.compareCheckbox) dom.compareCheckbox.checked = false;
-            hideComparison();
-        }
-
-        if (state.abCompareMode) {
-            showControlGroup(dom.lutSelectBGroup);
-            showAbComparison();
-        } else {
-            hideControlGroup(dom.lutSelectBGroup);
-            hideAbComparison();
-        }
-    }
 
     /**
      * Handle second LUT (B) dropdown change.
@@ -720,12 +752,33 @@ var GamutLutPreview = (function() {
             abSlider = new GamutComparisonSlider(dom.abComparison);
         }
 
-        updateAbComparison();
+        // Show placeholder labels if not both LUTs selected yet.
+        updateAbLabels();
+
+        if (state.selectedLut && state.selectedLutB) {
+            updateAbComparison();
+        }
     }
 
     function hideAbComparison() {
         if (dom.abComparison) dom.abComparison.style.display = 'none';
-        if (dom.canvasWrap && state.selectedImage) dom.canvasWrap.style.display = 'block';
+    }
+
+    /**
+     * Update the A/B comparison labels. Shows "Select a LUT" as placeholder.
+     */
+    function updateAbLabels() {
+        if (!dom.abComparison) return;
+
+        var labelBefore = dom.abComparison.querySelector('.gamut-lut__comparison-label--before');
+        var labelAfter = dom.abComparison.querySelector('.gamut-lut__comparison-label--after');
+
+        if (labelBefore) {
+            labelBefore.textContent = state.selectedLut ? state.selectedLut.title : 'LUT A';
+        }
+        if (labelAfter) {
+            labelAfter.textContent = state.selectedLutB ? state.selectedLutB.title : 'Select LUT B';
+        }
     }
 
     /**
@@ -733,7 +786,10 @@ var GamutLutPreview = (function() {
      */
     function updateAbComparison() {
         if (!abSlider || !engine || !engine.imageLoaded) return;
-        if (!state.selectedLut || !state.selectedLutB) return;
+        if (!state.selectedLut || !state.selectedLutB) {
+            updateAbLabels();
+            return;
+        }
 
         var parsedA = state.cubeCache.get(state.selectedLut.id);
         var parsedB = state.cubeCache.get(state.selectedLutB.id);
@@ -757,20 +813,39 @@ var GamutLutPreview = (function() {
         engine.render();
 
         // Update labels.
-        var labelBefore = dom.abComparison.querySelector('.gamut-lut__comparison-label--before');
-        var labelAfter = dom.abComparison.querySelector('.gamut-lut__comparison-label--after');
-        if (labelBefore) labelBefore.textContent = state.selectedLut.title;
-        if (labelAfter) labelAfter.textContent = state.selectedLutB.title;
+        updateAbLabels();
 
         abSlider.updateImages(canvasA, canvasB);
         abSlider.reset();
     }
 
     // ======================================================
+    //  LUT NAME TOAST
+    // ======================================================
+
+    /**
+     * Show the LUT name as a toast overlay on the canvas.
+     */
+    function showLutToast(name) {
+        if (!dom.lutToast) return;
+
+        dom.lutToast.textContent = name;
+        dom.lutToast.classList.add('gamut-lut__lut-toast--visible');
+
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function() {
+            dom.lutToast.classList.remove('gamut-lut__lut-toast--visible');
+        }, 1500);
+    }
+
+    // ======================================================
     //  FAVORITES
     // ======================================================
 
-    function loadFavorites() {
+    /**
+     * Load favorites from localStorage (instant, no network).
+     */
+    function loadFavoritesLocal() {
         try {
             var stored = localStorage.getItem(FAVORITES_KEY);
             state.favorites = stored ? JSON.parse(stored) : [];
@@ -779,12 +854,84 @@ var GamutLutPreview = (function() {
         }
     }
 
-    function saveFavorites() {
+    /**
+     * Save favorites to localStorage.
+     */
+    function saveFavoritesLocal() {
         try {
             localStorage.setItem(FAVORITES_KEY, JSON.stringify(state.favorites));
         } catch (e) {
             // Silently fail if localStorage is full or unavailable.
         }
+    }
+
+    /**
+     * Sync favorites from the server for logged-in users.
+     * Merges server-side favorites with any localStorage ones.
+     */
+    function syncFavoritesFromServer() {
+        var formData = new FormData();
+        formData.append('action', 'gamut_get_favorites');
+        formData.append('nonce', config.cartNonce);
+
+        fetch(config.ajaxUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(response) {
+            if (response.success && response.data.logged_in) {
+                var serverFavs = response.data.favorites || [];
+                var localFavs = state.favorites;
+
+                // Merge: union of server and local.
+                var merged = serverFavs.slice();
+                for (var i = 0; i < localFavs.length; i++) {
+                    if (merged.indexOf(localFavs[i]) === -1) {
+                        merged.push(localFavs[i]);
+                    }
+                }
+
+                state.favorites = merged;
+                saveFavoritesLocal();
+                updateFavoritesCount();
+
+                // Re-render grid to show correct hearts.
+                renderImageGrid();
+
+                // If local had extras not on server, push merge to server.
+                if (merged.length !== serverFavs.length) {
+                    saveFavoritesToServer();
+                }
+            }
+        })
+        .catch(function() {
+            // Silently fall back to localStorage.
+        });
+    }
+
+    /**
+     * Save favorites to the server (debounced).
+     */
+    function saveFavoritesToServer() {
+        if (!config.isLoggedIn) return;
+
+        if (favSaveTimeout) clearTimeout(favSaveTimeout);
+        favSaveTimeout = setTimeout(function() {
+            var formData = new FormData();
+            formData.append('action', 'gamut_save_favorites');
+            formData.append('nonce', config.cartNonce);
+            formData.append('favorites', JSON.stringify(state.favorites));
+
+            fetch(config.ajaxUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData
+            }).catch(function() {
+                // Silently fail.
+            });
+        }, 1000);
     }
 
     function onFavoriteClick(e) {
@@ -809,7 +956,8 @@ var GamutLutPreview = (function() {
             svg.setAttribute('fill', state.favorites.indexOf(id) !== -1 ? 'currentColor' : 'none');
         }
 
-        saveFavorites();
+        saveFavoritesLocal();
+        saveFavoritesToServer();
         updateFavoritesCount();
 
         // Re-apply filter if favorites-only mode is active.
@@ -951,7 +1099,7 @@ var GamutLutPreview = (function() {
         // Copy to clipboard.
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(shareUrl).then(function() {
-                showShareMessage('Link copied!');
+                showShareMessage('Link copied to clipboard!');
             }).catch(function() {
                 showShareFallback(shareUrl);
             });
@@ -970,10 +1118,10 @@ var GamutLutPreview = (function() {
     function showShareMessage(text) {
         if (!dom.shareMessage) return;
         dom.shareMessage.textContent = text;
-        dom.shareMessage.style.display = 'block';
+        dom.shareMessage.classList.add('gamut-lut__share-message--visible');
         setTimeout(function() {
-            dom.shareMessage.style.display = 'none';
-        }, 2000);
+            dom.shareMessage.classList.remove('gamut-lut__share-message--visible');
+        }, 3500);
     }
 
     // ======================================================
@@ -1084,8 +1232,6 @@ var GamutLutPreview = (function() {
         formData.append('collection', collection || '');
         formData.append('session_id', state.sessionId);
 
-        // Use sendBeacon if available for non-blocking, navigator.sendBeacon for unload.
-        // Otherwise fall back to fetch.
         if (navigator.sendBeacon) {
             navigator.sendBeacon(config.ajaxUrl, formData);
         } else {
@@ -1166,6 +1312,14 @@ var GamutLutPreview = (function() {
                 touchState.currentScale = Math.max(1, Math.min(4, scale));
 
                 applyCanvasTransform(touchState);
+            } else if (touchState.isSwiping && touchState.currentScale <= 1) {
+                // Allow default scroll when not zoomed and not swiping horizontally.
+                var deltaX = Math.abs(e.touches[0].clientX - touchState.startX);
+                var deltaY = Math.abs(e.touches[0].clientY - touchState.startY);
+                if (deltaY > deltaX) {
+                    // Vertical — let the page scroll through.
+                    touchState.isSwiping = false;
+                }
             }
         }, { passive: false });
 
@@ -1283,12 +1437,17 @@ var GamutLutPreview = (function() {
         if (dom.cubeLoading) dom.cubeLoading.style.display = 'none';
     }
 
-    function showControlGroup(el) {
-        if (el) el.style.display = '';
-    }
+    /**
+     * Reveal or hide a control group with CSS transition.
+     */
+    function revealControlGroup(el, show) {
+        if (!el) return;
 
-    function hideControlGroup(el) {
-        if (el) el.style.display = 'none';
+        if (show) {
+            el.classList.add('gamut-lut__control-group--visible');
+        } else {
+            el.classList.remove('gamut-lut__control-group--visible');
+        }
     }
 
     function showCart() {
@@ -1321,6 +1480,13 @@ var GamutLutPreview = (function() {
         var div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+    }
+
+    /**
+     * Escape string for use in HTML attributes.
+     */
+    function escapeAttr(str) {
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     // ======================================================
@@ -1402,7 +1568,7 @@ var GamutLutPreview = (function() {
             if (grid && images.length) {
                 var gridHtml = '';
                 images.forEach(function(img) {
-                    gridHtml += '<div class="gamut-lut__grid-item" data-id="' + img.id + '">';
+                    gridHtml += '<div class="gamut-lut__grid-item" data-id="' + img.id + '" title="' + escapeAttr(img.title) + '">';
                     gridHtml += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
                     gridHtml += '</div>';
                 });
