@@ -95,7 +95,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 <label class="gamut-lut__label" for="gamut-lut-collection">
                     <?php esc_html_e( 'LUT Collection', 'gamut-lut-preview' ); ?>
                 </label>
-                <select id="gamut-lut-collection" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Select LUT collection', 'gamut-lut-preview' ); ?>">
+                <select id="gamut-lut-collection" class="gamut-lut__select">
                     <option value=""><?php esc_html_e( 'Loading...', 'gamut-lut-preview' ); ?></option>
                 </select>
             </div>
@@ -108,7 +108,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                         <span class="gamut-lut__spinner gamut-lut__spinner--small"></span>
                     </span>
                 </label>
-                <select id="gamut-lut-select" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Select individual LUT', 'gamut-lut-preview' ); ?>">
+                <select id="gamut-lut-select" class="gamut-lut__select">
                     <option value=""><?php esc_html_e( 'Select LUT', 'gamut-lut-preview' ); ?></option>
                 </select>
             </div>
@@ -124,8 +124,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                            class="gamut-lut__range"
                            min="0"
                            max="100"
-                           value="100"
-                           aria-label="<?php esc_attr_e( 'LUT intensity', 'gamut-lut-preview' ); ?>">
+                           value="100">
                     <span class="gamut-lut__intensity-value">100%</span>
                 </div>
             </div>
@@ -151,7 +150,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 <label class="gamut-lut__label" for="gamut-lut-select-b">
                     <?php esc_html_e( 'Compare With', 'gamut-lut-preview' ); ?>
                 </label>
-                <select id="gamut-lut-select-b" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Select second LUT to compare', 'gamut-lut-preview' ); ?>">
+                <select id="gamut-lut-select-b" class="gamut-lut__select">
                     <option value=""><?php esc_html_e( 'Select LUT', 'gamut-lut-preview' ); ?></option>
                 </select>
             </div>
@@ -209,6 +208,9 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
 
         <div class="gamut-lut__grid">
             <!-- Image grid populated by JS -->
+        </div>
+        <div class="gamut-lut__grid-empty" style="display: none;">
+            <?php esc_html_e( 'No favorites yet. Click the heart icon on any image to save it.', 'gamut-lut-preview' ); ?>
         </div>
     </div><!-- .gamut-lut__images-section -->
 

@@ -137,6 +137,9 @@ var GamutLutPreview = (function() {
         dom.grid = dom.root.querySelector('.gamut-lut__grid');
         dom.categoryFilter = document.getElementById('gamut-lut-category');
 
+        // Grid empty state.
+        dom.gridEmpty = dom.root.querySelector('.gamut-lut__grid-empty');
+
         // Favorites.
         dom.favoritesToggle = document.getElementById('gamut-lut-favorites-toggle');
         dom.favoritesCount = dom.root.querySelector('.gamut-lut__favorites-count');
@@ -195,6 +198,19 @@ var GamutLutPreview = (function() {
                 segments[i].addEventListener('click', onSegmentClick);
             }
         }
+
+        // Recalculate comparison slider on window resize.
+        var resizeTimer = null;
+        window.addEventListener('resize', function() {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (state.compareMode === 'before-after' && slider) {
+                    updateComparison();
+                } else if (state.compareMode === 'ab' && abSlider) {
+                    updateAbComparison();
+                }
+            }, 150);
+        });
     }
 
     // ======================================================
@@ -234,8 +250,21 @@ var GamutLutPreview = (function() {
         })
         .catch(function(err) {
             setLoading(false);
+            showFetchError();
             console.error('GamutLutPreview: Failed to fetch data', err);
         });
+    }
+
+    /**
+     * Show a visible error message when data loading fails.
+     */
+    function showFetchError() {
+        if (dom.emptyState) {
+            dom.emptyState.textContent = 'Unable to load preview data. Please refresh the page.';
+        }
+        if (dom.collectionSelect) {
+            dom.collectionSelect.innerHTML = '<option value="">Unable to load</option>';
+        }
     }
 
     // ======================================================
@@ -252,7 +281,7 @@ var GamutLutPreview = (function() {
         state.images.forEach(function(img) {
             var catAttr = img.categories.join(' ');
             var isFav = state.favorites.indexOf(img.id) !== -1;
-            html += '<div class="gamut-lut__grid-item' + (isFav ? ' gamut-lut__grid-item--favorited' : '') + '" data-id="' + img.id + '" data-categories="' + catAttr + '" title="' + escapeAttr(img.title) + '">';
+            html += '<div class="gamut-lut__grid-item' + (isFav ? ' gamut-lut__grid-item--favorited' : '') + '" data-id="' + img.id + '" data-categories="' + catAttr + '" title="' + escapeAttr(img.title) + '" tabindex="0" role="button" aria-label="' + escapeAttr(img.title) + '">';
             html += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
             html += '<button type="button" class="gamut-lut__favorite-btn" aria-label="' + (isFav ? 'Remove from favorites' : 'Add to favorites') + '">';
             html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
@@ -262,10 +291,11 @@ var GamutLutPreview = (function() {
 
         dom.grid.innerHTML = html;
 
-        // Bind click events.
+        // Bind click and keyboard events.
         var items = dom.grid.querySelectorAll('.gamut-lut__grid-item');
         for (var i = 0; i < items.length; i++) {
             items[i].addEventListener('click', onImageClick);
+            items[i].addEventListener('keydown', onImageKeyDown);
         }
 
         // Bind favorite button clicks.
@@ -318,6 +348,17 @@ var GamutLutPreview = (function() {
         var id = parseInt(item.getAttribute('data-id'), 10);
 
         selectImageById(id);
+    }
+
+    /**
+     * Handle keyboard activation on grid items (Enter/Space).
+     */
+    function onImageKeyDown(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
+            selectImageById(id);
+        }
     }
 
     /**
@@ -683,7 +724,7 @@ var GamutLutPreview = (function() {
         if (!slider || !engine || !engine.imageLoaded) return;
 
         var beforeCanvas = engine.getOriginalCanvas();
-        var afterCanvas = engine.getGradedCanvas();
+        var afterCanvas = engine.captureCanvas();
 
         slider.updateImages(beforeCanvas, afterCanvas);
         slider.reset();
@@ -795,21 +836,18 @@ var GamutLutPreview = (function() {
         var parsedB = state.cubeCache.get(state.selectedLutB.id);
         if (!parsedA || !parsedB) return;
 
-        // Render LUT A at current intensity.
+        // Render LUT A at current intensity and capture.
         engine.loadLut(parsedA);
         engine.setIntensity(state.intensity / 100);
-        engine.render();
-        var canvasA = engine.getGradedCanvas();
+        var canvasA = engine.captureCanvas();
 
-        // Render LUT B at current intensity.
+        // Render LUT B at current intensity and capture.
         engine.loadLut(parsedB);
         engine.setIntensity(state.intensity / 100);
-        engine.render();
-        var canvasB = engine.getGradedCanvas();
+        var canvasB = engine.captureCanvas();
 
         // Restore LUT A as the active LUT.
         engine.loadLut(parsedA);
-        engine.setIntensity(state.intensity / 100);
         engine.render();
 
         // Update labels.
@@ -971,6 +1009,10 @@ var GamutLutPreview = (function() {
 
         if (dom.favoritesToggle) {
             dom.favoritesToggle.classList.toggle('gamut-lut__favorites-toggle--active', state.showFavoritesOnly);
+            dom.favoritesToggle.setAttribute('aria-label',
+                state.showFavoritesOnly ? 'Show all images' : 'Show favorite images only'
+            );
+            dom.favoritesToggle.setAttribute('aria-pressed', state.showFavoritesOnly ? 'true' : 'false');
         }
 
         filterImages();
@@ -996,6 +1038,7 @@ var GamutLutPreview = (function() {
         if (!dom.grid) return;
 
         var items = dom.grid.querySelectorAll('.gamut-lut__grid-item');
+        var visibleCount = 0;
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
             var id = parseInt(item.getAttribute('data-id'), 10);
@@ -1015,6 +1058,12 @@ var GamutLutPreview = (function() {
             }
 
             item.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
+        }
+
+        // Show empty state when favorites filter yields no results.
+        if (dom.gridEmpty) {
+            dom.gridEmpty.style.display = (visibleCount === 0 && state.showFavoritesOnly) ? '' : 'none';
         }
     }
 
@@ -1226,6 +1275,7 @@ var GamutLutPreview = (function() {
     function trackEvent(eventType, objectId, title, collection) {
         var formData = new FormData();
         formData.append('action', 'gamut_track_preview');
+        formData.append('nonce', config.cartNonce);
         formData.append('event_type', eventType);
         formData.append('object_id', objectId);
         formData.append('title', title || '');
@@ -1568,7 +1618,7 @@ var GamutLutPreview = (function() {
             if (grid && images.length) {
                 var gridHtml = '';
                 images.forEach(function(img) {
-                    gridHtml += '<div class="gamut-lut__grid-item" data-id="' + img.id + '" title="' + escapeAttr(img.title) + '">';
+                    gridHtml += '<div class="gamut-lut__grid-item" data-id="' + img.id + '" title="' + escapeAttr(img.title) + '" tabindex="0" role="button" aria-label="' + escapeAttr(img.title) + '">';
                     gridHtml += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
                     gridHtml += '</div>';
                 });
@@ -1597,7 +1647,7 @@ var GamutLutPreview = (function() {
                         embedEngine.loadImage(img.url).then(function() {
                             if (embedState.compareMode && embedSlider) {
                                 var before = embedEngine.getOriginalCanvas();
-                                var after = embedEngine.getGradedCanvas();
+                                var after = embedEngine.captureCanvas();
                                 embedSlider.updateImages(before, after);
                                 embedSlider.reset();
                             }
@@ -1633,10 +1683,10 @@ var GamutLutPreview = (function() {
 
                 embedState.selectedLut = lut;
 
-                // Show intensity and compare controls.
-                if (intensityGroup) intensityGroup.style.display = '';
+                // Show intensity and compare controls with smooth reveal.
+                revealControlGroup(intensityGroup, true);
                 var compareParent = compareCheckbox ? compareCheckbox.closest('.gamut-lut__control-group') : null;
-                if (compareParent) compareParent.style.display = '';
+                revealControlGroup(compareParent, true);
 
                 var applyEmbedLut = function(parsed) {
                     if (!embedEngine) return;
@@ -1688,7 +1738,7 @@ var GamutLutPreview = (function() {
                         embedSlider = new GamutComparisonSlider(comparison);
                     }
                     var before = embedEngine.getOriginalCanvas();
-                    var after = embedEngine.getGradedCanvas();
+                    var after = embedEngine.captureCanvas();
                     embedSlider.updateImages(before, after);
                     embedSlider.reset();
                 } else {

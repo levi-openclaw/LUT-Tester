@@ -54,7 +54,11 @@ class Gamut_LUT_Analytics {
      * AJAX handler for tracking preview events.
      */
     public function track_preview() {
-        // Rate limit: skip if nonce is missing (still functional, just less secured for anon tracking).
+        // Verify nonce for logged-in users. Allow anonymous tracking (guests) without nonce.
+        if ( is_user_logged_in() ) {
+            check_ajax_referer( 'gamut_lut_nonce', 'nonce' );
+        }
+
         $event_type = isset( $_POST['event_type'] ) ? sanitize_text_field( $_POST['event_type'] ) : '';
         $object_id  = isset( $_POST['object_id'] ) ? absint( $_POST['object_id'] ) : 0;
         $title      = isset( $_POST['title'] ) ? sanitize_text_field( $_POST['title'] ) : '';

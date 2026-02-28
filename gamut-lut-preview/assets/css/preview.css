@@ -288,7 +288,7 @@
 }
 
 /* ========================================
-   Checkbox (Compare Toggle)
+   Checkbox (used in embed compare toggle)
    ======================================== */
 .gamut-lut__checkbox-wrap {
     display: flex;
@@ -812,6 +812,14 @@
     margin-top: 20px;
 }
 
+.gamut-lut__grid-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--gamut-text-muted);
+    font-size: 14px;
+    font-weight: 300;
+}
+
 .gamut-lut__grid-item {
     position: relative;
     aspect-ratio: 1;
@@ -843,6 +851,14 @@
 
 .gamut-lut__grid-item--active::after {
     border-color: var(--gamut-accent);
+}
+
+.gamut-lut__grid-item:focus-visible::after {
+    border-color: var(--gamut-accent);
+}
+
+.gamut-lut__grid-item:focus-visible {
+    outline: none;
 }
 
 /* ========================================

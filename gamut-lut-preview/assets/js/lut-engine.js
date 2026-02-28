@@ -526,6 +526,27 @@ var GamutLutEngine = (function() {
     };
 
     /**
+     * Get a canvas snapshot at the current intensity setting.
+     *
+     * @returns {HTMLCanvasElement}
+     */
+    Engine.prototype.captureCanvas = function() {
+        var offscreen = document.createElement('canvas');
+        offscreen.width = this.canvas.width;
+        offscreen.height = this.canvas.height;
+
+        if (!this.imageLoaded) {
+            return offscreen;
+        }
+
+        this.render();
+        var ctx = offscreen.getContext('2d');
+        ctx.drawImage(this.canvas, 0, 0);
+
+        return offscreen;
+    };
+
+    /**
      * Check if WebGL2 is being used.
      *
      * @returns {boolean}

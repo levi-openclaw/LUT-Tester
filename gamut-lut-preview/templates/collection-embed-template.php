@@ -69,7 +69,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
 
             <!-- Intensity -->
-            <div class="gamut-lut__control-group gamut-lut__control-group--intensity" style="display: none;">
+            <div class="gamut-lut__control-group gamut-lut__control-group--intensity">
                 <label class="gamut-lut__label"><?php esc_html_e( 'Intensity', 'gamut-lut-preview' ); ?></label>
                 <div class="gamut-lut__intensity-wrap">
                     <input type="range" class="gamut-lut__range gamut-lut__embed-intensity" min="0" max="100" value="100" aria-label="<?php esc_attr_e( 'LUT intensity', 'gamut-lut-preview' ); ?>">
@@ -78,7 +78,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
 
             <!-- Compare -->
-            <div class="gamut-lut__control-group" style="display: none;">
+            <div class="gamut-lut__control-group gamut-lut__control-group--compare">
                 <label class="gamut-lut__checkbox-wrap">
                     <input type="checkbox" class="gamut-lut__checkbox gamut-lut__embed-compare" aria-label="<?php esc_attr_e( 'Show before and after', 'gamut-lut-preview' ); ?>">
                     <span class="gamut-lut__checkbox-label"><?php esc_html_e( 'Before & After', 'gamut-lut-preview' ); ?></span>
