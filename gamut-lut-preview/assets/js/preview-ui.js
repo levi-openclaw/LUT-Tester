@@ -4,10 +4,22 @@
  * Fetches data from the REST API, manages state, and coordinates
  * the LUT engine, comparison slider, and cart integration.
  *
+ * Features:
+ * - Favorites / Shortlist (localStorage)
+ * - A/B Split View (compare two LUTs)
+ * - Collection embed mode
+ * - Collection bundling / upsell
+ * - Share a Look (deep-link URLs)
+ * - Analytics tracking
+ * - Mobile gesture support (pinch-zoom, swipe)
+ *
  * @package Gamut_LUT_Preview
  */
 var GamutLutPreview = (function() {
     'use strict';
+
+    // Storage key for favorites.
+    var FAVORITES_KEY = 'gamut_lut_favorites';
 
     // DOM references cached on init.
     var dom = {};
@@ -20,16 +32,24 @@ var GamutLutPreview = (function() {
         selectedImage: null,
         selectedCollection: null,
         selectedLut: null,
+        selectedLutB: null,
         activeCategory: '',
         intensity: 100,
         compareMode: false,
+        abCompareMode: false,
+        showFavoritesOnly: false,
+        favorites: [],
         isLoading: false,
-        cubeCache: new Map()
+        cubeCache: new Map(),
+        sessionId: '',
+        gestureState: null
     };
 
     // Engine and slider instances.
     var engine = null;
+    var engineB = null;
     var slider = null;
+    var abSlider = null;
 
     // Config from wp_localize_script.
     var config = null;
@@ -43,6 +63,12 @@ var GamutLutPreview = (function() {
         }
         config = gamutLutConfig;
 
+        // Generate a session ID for analytics deduplication.
+        state.sessionId = generateSessionId();
+
+        // Load favorites from localStorage.
+        loadFavorites();
+
         cacheDom();
 
         if (!dom.root) {
@@ -55,6 +81,8 @@ var GamutLutPreview = (function() {
         }
 
         bindEvents();
+        initMobileGestures();
+        parseShareUrl();
         fetchData();
     }
 
@@ -80,17 +108,39 @@ var GamutLutPreview = (function() {
         dom.compareCheckbox = document.getElementById('gamut-lut-compare');
         dom.compareGroup = dom.root.querySelector('.gamut-lut__control-group--compare');
 
+        // A/B Compare controls.
+        dom.abCompareCheckbox = document.getElementById('gamut-lut-ab-compare');
+        dom.abCompareGroup = dom.root.querySelector('.gamut-lut__control-group--ab-compare');
+        dom.lutSelectB = document.getElementById('gamut-lut-select-b');
+        dom.lutSelectBGroup = dom.root.querySelector('.gamut-lut__control-group--lut-b');
+
         // Comparison slider.
         dom.comparison = dom.root.querySelector('.gamut-lut__comparison');
+
+        // A/B comparison container.
+        dom.abComparison = dom.root.querySelector('.gamut-lut__ab-comparison');
 
         // Image grid.
         dom.grid = dom.root.querySelector('.gamut-lut__grid');
         dom.categoryFilter = document.getElementById('gamut-lut-category');
 
+        // Favorites.
+        dom.favoritesToggle = document.getElementById('gamut-lut-favorites-toggle');
+        dom.favoritesCount = dom.root.querySelector('.gamut-lut__favorites-count');
+
         // Cart.
         dom.cartSection = dom.root.querySelector('.gamut-lut__cart');
         dom.cartBtn = document.getElementById('gamut-lut-cart-btn');
         dom.cartMessage = dom.root.querySelector('.gamut-lut__cart-message');
+
+        // Share.
+        dom.shareBtn = document.getElementById('gamut-lut-share-btn');
+        dom.shareGroup = dom.root.querySelector('.gamut-lut__control-group--share');
+        dom.shareMessage = dom.root.querySelector('.gamut-lut__share-message');
+
+        // Upsell.
+        dom.upsellSection = dom.root.querySelector('.gamut-lut__upsell');
+        dom.upsellList = dom.root.querySelector('.gamut-lut__upsell-list');
 
         // Cube loading indicator.
         dom.cubeLoading = dom.root.querySelector('.gamut-lut__cube-loading');
@@ -118,7 +168,23 @@ var GamutLutPreview = (function() {
         if (dom.cartBtn) {
             dom.cartBtn.addEventListener('click', onAddToCart);
         }
+        if (dom.favoritesToggle) {
+            dom.favoritesToggle.addEventListener('click', onFavoritesToggle);
+        }
+        if (dom.abCompareCheckbox) {
+            dom.abCompareCheckbox.addEventListener('change', onAbCompareToggle);
+        }
+        if (dom.lutSelectB) {
+            dom.lutSelectB.addEventListener('change', onLutBChange);
+        }
+        if (dom.shareBtn) {
+            dom.shareBtn.addEventListener('click', onShareClick);
+        }
     }
+
+    // ======================================================
+    //  DATA FETCHING
+    // ======================================================
 
     /**
      * Fetch images and collections from the REST API in parallel.
@@ -145,7 +211,11 @@ var GamutLutPreview = (function() {
             renderImageGrid();
             renderCategoryFilter();
             renderCollectionDropdown();
+            updateFavoritesCount();
             setLoading(false);
+
+            // Apply deep-link state from URL if present.
+            applyShareState();
         })
         .catch(function(err) {
             setLoading(false);
@@ -153,8 +223,12 @@ var GamutLutPreview = (function() {
         });
     }
 
+    // ======================================================
+    //  IMAGE GRID RENDERING
+    // ======================================================
+
     /**
-     * Render the image grid.
+     * Render the image grid with favorite hearts.
      */
     function renderImageGrid() {
         if (!dom.grid) return;
@@ -162,8 +236,12 @@ var GamutLutPreview = (function() {
         var html = '';
         state.images.forEach(function(img) {
             var catAttr = img.categories.join(' ');
-            html += '<div class="gamut-lut__grid-item" data-id="' + img.id + '" data-categories="' + catAttr + '">';
+            var isFav = state.favorites.indexOf(img.id) !== -1;
+            html += '<div class="gamut-lut__grid-item' + (isFav ? ' gamut-lut__grid-item--favorited' : '') + '" data-id="' + img.id + '" data-categories="' + catAttr + '">';
             html += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
+            html += '<button type="button" class="gamut-lut__favorite-btn" aria-label="' + (isFav ? 'Remove from favorites' : 'Add to favorites') + '">';
+            html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+            html += '</button>';
             html += '</div>';
         });
 
@@ -173,6 +251,12 @@ var GamutLutPreview = (function() {
         var items = dom.grid.querySelectorAll('.gamut-lut__grid-item');
         for (var i = 0; i < items.length; i++) {
             items[i].addEventListener('click', onImageClick);
+        }
+
+        // Bind favorite button clicks.
+        var favBtns = dom.grid.querySelectorAll('.gamut-lut__favorite-btn');
+        for (var j = 0; j < favBtns.length; j++) {
+            favBtns[j].addEventListener('click', onFavoriteClick);
         }
     }
 
@@ -204,14 +288,27 @@ var GamutLutPreview = (function() {
         dom.collectionSelect.innerHTML = html;
     }
 
+    // ======================================================
+    //  IMAGE SELECTION
+    // ======================================================
+
     /**
      * Handle image click in the grid.
      */
     function onImageClick(e) {
+        // Don't trigger image select when clicking the favorite button.
+        if (e.target.closest('.gamut-lut__favorite-btn')) return;
+
         var item = e.currentTarget;
         var id = parseInt(item.getAttribute('data-id'), 10);
 
-        // Find the image data.
+        selectImageById(id);
+    }
+
+    /**
+     * Select an image by ID.
+     */
+    function selectImageById(id) {
         var img = null;
         for (var i = 0; i < state.images.length; i++) {
             if (state.images[i].id === id) {
@@ -224,7 +321,8 @@ var GamutLutPreview = (function() {
         // Update active state in grid.
         var active = dom.grid.querySelector('.gamut-lut__grid-item--active');
         if (active) active.classList.remove('gamut-lut__grid-item--active');
-        item.classList.add('gamut-lut__grid-item--active');
+        var item = dom.grid.querySelector('.gamut-lut__grid-item[data-id="' + id + '"]');
+        if (item) item.classList.add('gamut-lut__grid-item--active');
 
         state.selectedImage = img;
 
@@ -240,11 +338,21 @@ var GamutLutPreview = (function() {
                 if (state.compareMode) {
                     updateComparison();
                 }
+                if (state.abCompareMode) {
+                    updateAbComparison();
+                }
             }).catch(function() {
                 setLoading(false);
             });
         }
+
+        // Track analytics.
+        trackEvent('image_preview', img.id, img.title);
     }
+
+    // ======================================================
+    //  COLLECTION & LUT SELECTION
+    // ======================================================
 
     /**
      * Handle collection dropdown change.
@@ -255,14 +363,25 @@ var GamutLutPreview = (function() {
         if (!slug) {
             state.selectedCollection = null;
             state.selectedLut = null;
+            state.selectedLutB = null;
             hideControlGroup(dom.lutSelectGroup);
             hideControlGroup(dom.intensityGroup);
             hideControlGroup(dom.compareGroup);
+            hideControlGroup(dom.abCompareGroup);
+            hideControlGroup(dom.lutSelectBGroup);
+            hideControlGroup(dom.shareGroup);
             hideCart();
+            hideUpsell();
             return;
         }
 
-        // Find collection.
+        selectCollectionBySlug(slug);
+    }
+
+    /**
+     * Select a collection by slug.
+     */
+    function selectCollectionBySlug(slug) {
         var col = null;
         for (var i = 0; i < state.collections.length; i++) {
             if (state.collections[i].slug === slug) {
@@ -274,6 +393,12 @@ var GamutLutPreview = (function() {
 
         state.selectedCollection = col;
         state.selectedLut = null;
+        state.selectedLutB = null;
+
+        // Ensure dropdown reflects the selection.
+        if (dom.collectionSelect) {
+            dom.collectionSelect.value = slug;
+        }
 
         // Populate LUT dropdown.
         var html = '<option value="">Select LUT</option>';
@@ -282,10 +407,18 @@ var GamutLutPreview = (function() {
         });
         dom.lutSelect.innerHTML = html;
 
+        // Populate LUT B dropdown too.
+        if (dom.lutSelectB) {
+            dom.lutSelectB.innerHTML = html;
+        }
+
         // Show LUT select group.
         showControlGroup(dom.lutSelectGroup);
         hideControlGroup(dom.intensityGroup);
         hideControlGroup(dom.compareGroup);
+        hideControlGroup(dom.abCompareGroup);
+        hideControlGroup(dom.lutSelectBGroup);
+        hideControlGroup(dom.shareGroup);
 
         // Show/hide cart button based on product_id.
         if (col.product_id) {
@@ -293,6 +426,9 @@ var GamutLutPreview = (function() {
         } else {
             hideCart();
         }
+
+        // Render upsell (other collections).
+        renderUpsell(col);
 
         // Preload all .cube files for this collection in the background.
         preloadCollection(col);
@@ -308,10 +444,20 @@ var GamutLutPreview = (function() {
             state.selectedLut = null;
             hideControlGroup(dom.intensityGroup);
             hideControlGroup(dom.compareGroup);
+            hideControlGroup(dom.abCompareGroup);
+            hideControlGroup(dom.shareGroup);
             return;
         }
 
-        // Find LUT data.
+        selectLutById(lutId);
+    }
+
+    /**
+     * Select a LUT by ID.
+     */
+    function selectLutById(lutId) {
+        if (!state.selectedCollection) return;
+
         var lut = null;
         var luts = state.selectedCollection.luts;
         for (var i = 0; i < luts.length; i++) {
@@ -324,18 +470,26 @@ var GamutLutPreview = (function() {
 
         state.selectedLut = lut;
 
+        // Ensure dropdown reflects the selection.
+        if (dom.lutSelect) {
+            dom.lutSelect.value = lutId;
+        }
+
         // Load and apply the LUT.
         loadLutForPreview(lut);
 
-        // Show intensity and compare controls.
+        // Show intensity, compare, A/B, and share controls.
         showControlGroup(dom.intensityGroup);
         showControlGroup(dom.compareGroup);
+        showControlGroup(dom.abCompareGroup);
+        showControlGroup(dom.shareGroup);
+
+        // Track analytics.
+        trackEvent('lut_preview', lut.id, lut.title, state.selectedCollection.slug);
     }
 
     /**
      * Load a LUT, using cache if available.
-     *
-     * @param {{ id: number, title: string, lut_size: number }} lutData
      */
     function loadLutForPreview(lutData) {
         var id = lutData.id;
@@ -345,7 +499,6 @@ var GamutLutPreview = (function() {
             return;
         }
 
-        // Fetch from protected endpoint.
         showCubeLoading();
         var url = config.restUrl + '/cube/' + id;
 
@@ -364,8 +517,6 @@ var GamutLutPreview = (function() {
 
     /**
      * Apply parsed LUT data to the engine and render.
-     *
-     * @param {{ size: number, data: Float32Array }} parsed
      */
     function applyLut(parsed) {
         if (!engine) return;
@@ -377,12 +528,13 @@ var GamutLutPreview = (function() {
         if (state.compareMode) {
             updateComparison();
         }
+        if (state.abCompareMode) {
+            updateAbComparison();
+        }
     }
 
     /**
      * Preload all .cube files for a collection in the background.
-     *
-     * @param {{ luts: Array }} collection
      */
     function preloadCollection(collection) {
         collection.luts.forEach(function(lut) {
@@ -399,6 +551,10 @@ var GamutLutPreview = (function() {
         });
     }
 
+    // ======================================================
+    //  INTENSITY
+    // ======================================================
+
     /**
      * Handle intensity slider change.
      */
@@ -406,12 +562,10 @@ var GamutLutPreview = (function() {
         var value = parseInt(dom.intensitySlider.value, 10);
         state.intensity = value;
 
-        // Update value display.
         if (dom.intensityValue) {
             dom.intensityValue.textContent = value + '%';
         }
 
-        // Update slider track gradient.
         var pct = value;
         dom.intensitySlider.style.background =
             'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + pct + '%, var(--gamut-slider-track) ' + pct + '%, var(--gamut-slider-track) 100%)';
@@ -423,14 +577,28 @@ var GamutLutPreview = (function() {
             if (state.compareMode) {
                 updateComparison();
             }
+            if (state.abCompareMode) {
+                updateAbComparison();
+            }
         }
     }
+
+    // ======================================================
+    //  BEFORE/AFTER COMPARISON
+    // ======================================================
 
     /**
      * Handle compare checkbox toggle.
      */
     function onCompareToggle() {
         state.compareMode = dom.compareCheckbox.checked;
+
+        // Disable A/B compare if enabling before/after.
+        if (state.compareMode && state.abCompareMode) {
+            state.abCompareMode = false;
+            if (dom.abCompareCheckbox) dom.abCompareCheckbox.checked = false;
+            hideAbComparison();
+        }
 
         if (state.compareMode) {
             showComparison();
@@ -439,16 +607,12 @@ var GamutLutPreview = (function() {
         }
     }
 
-    /**
-     * Show the comparison slider with before/after images.
-     */
     function showComparison() {
         if (!dom.comparison || !engine) return;
 
         dom.comparison.style.display = 'block';
         if (dom.canvasWrap) dom.canvasWrap.style.display = 'none';
 
-        // Initialize slider if not already done.
         if (!slider) {
             slider = new GamutComparisonSlider(dom.comparison);
         }
@@ -456,17 +620,11 @@ var GamutLutPreview = (function() {
         updateComparison();
     }
 
-    /**
-     * Hide the comparison slider and show the main canvas.
-     */
     function hideComparison() {
         if (dom.comparison) dom.comparison.style.display = 'none';
         if (dom.canvasWrap && state.selectedImage) dom.canvasWrap.style.display = 'block';
     }
 
-    /**
-     * Update comparison slider images.
-     */
     function updateComparison() {
         if (!slider || !engine || !engine.imageLoaded) return;
 
@@ -477,27 +635,398 @@ var GamutLutPreview = (function() {
         slider.reset();
     }
 
-    /**
-     * Handle category filter change.
-     */
-    function onCategoryChange() {
-        state.activeCategory = dom.categoryFilter.value;
+    // ======================================================
+    //  A/B LUT COMPARISON
+    // ======================================================
 
-        var items = dom.grid.querySelectorAll('.gamut-lut__grid-item');
-        for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            if (!state.activeCategory) {
-                item.style.display = '';
-            } else {
-                var cats = item.getAttribute('data-categories') || '';
-                item.style.display = cats.indexOf(state.activeCategory) !== -1 ? '' : 'none';
-            }
+    /**
+     * Handle A/B compare toggle.
+     */
+    function onAbCompareToggle() {
+        state.abCompareMode = dom.abCompareCheckbox.checked;
+
+        // Disable before/after if enabling A/B.
+        if (state.abCompareMode && state.compareMode) {
+            state.compareMode = false;
+            if (dom.compareCheckbox) dom.compareCheckbox.checked = false;
+            hideComparison();
+        }
+
+        if (state.abCompareMode) {
+            showControlGroup(dom.lutSelectBGroup);
+            showAbComparison();
+        } else {
+            hideControlGroup(dom.lutSelectBGroup);
+            hideAbComparison();
         }
     }
 
     /**
-     * Handle add to cart button click.
+     * Handle second LUT (B) dropdown change.
      */
+    function onLutBChange() {
+        var lutId = parseInt(dom.lutSelectB.value, 10);
+
+        if (!lutId || !state.selectedCollection) {
+            state.selectedLutB = null;
+            return;
+        }
+
+        var lut = null;
+        var luts = state.selectedCollection.luts;
+        for (var i = 0; i < luts.length; i++) {
+            if (luts[i].id === lutId) {
+                lut = luts[i];
+                break;
+            }
+        }
+        if (!lut) return;
+
+        state.selectedLutB = lut;
+
+        // Load and render B side.
+        loadLutB(lut);
+    }
+
+    /**
+     * Load LUT B data and update A/B comparison.
+     */
+    function loadLutB(lutData) {
+        var id = lutData.id;
+
+        if (state.cubeCache.has(id)) {
+            updateAbComparison();
+            return;
+        }
+
+        var url = config.restUrl + '/cube/' + id;
+        GamutCubeParser.fetchAndParse(url, config.nonce)
+            .then(function(parsed) {
+                state.cubeCache.set(id, parsed);
+                updateAbComparison();
+            })
+            .catch(function(err) {
+                console.error('GamutLutPreview: Failed to load LUT B', err);
+            });
+    }
+
+    function showAbComparison() {
+        if (!dom.abComparison || !engine) return;
+
+        dom.abComparison.style.display = 'block';
+        if (dom.canvasWrap) dom.canvasWrap.style.display = 'none';
+
+        if (!abSlider) {
+            abSlider = new GamutComparisonSlider(dom.abComparison);
+        }
+
+        updateAbComparison();
+    }
+
+    function hideAbComparison() {
+        if (dom.abComparison) dom.abComparison.style.display = 'none';
+        if (dom.canvasWrap && state.selectedImage) dom.canvasWrap.style.display = 'block';
+    }
+
+    /**
+     * Render both LUT A and LUT B onto the A/B comparison canvases.
+     */
+    function updateAbComparison() {
+        if (!abSlider || !engine || !engine.imageLoaded) return;
+        if (!state.selectedLut || !state.selectedLutB) return;
+
+        var parsedA = state.cubeCache.get(state.selectedLut.id);
+        var parsedB = state.cubeCache.get(state.selectedLutB.id);
+        if (!parsedA || !parsedB) return;
+
+        // Render LUT A at current intensity.
+        engine.loadLut(parsedA);
+        engine.setIntensity(state.intensity / 100);
+        engine.render();
+        var canvasA = engine.getGradedCanvas();
+
+        // Render LUT B at current intensity.
+        engine.loadLut(parsedB);
+        engine.setIntensity(state.intensity / 100);
+        engine.render();
+        var canvasB = engine.getGradedCanvas();
+
+        // Restore LUT A as the active LUT.
+        engine.loadLut(parsedA);
+        engine.setIntensity(state.intensity / 100);
+        engine.render();
+
+        // Update labels.
+        var labelBefore = dom.abComparison.querySelector('.gamut-lut__comparison-label--before');
+        var labelAfter = dom.abComparison.querySelector('.gamut-lut__comparison-label--after');
+        if (labelBefore) labelBefore.textContent = state.selectedLut.title;
+        if (labelAfter) labelAfter.textContent = state.selectedLutB.title;
+
+        abSlider.updateImages(canvasA, canvasB);
+        abSlider.reset();
+    }
+
+    // ======================================================
+    //  FAVORITES
+    // ======================================================
+
+    function loadFavorites() {
+        try {
+            var stored = localStorage.getItem(FAVORITES_KEY);
+            state.favorites = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            state.favorites = [];
+        }
+    }
+
+    function saveFavorites() {
+        try {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(state.favorites));
+        } catch (e) {
+            // Silently fail if localStorage is full or unavailable.
+        }
+    }
+
+    function onFavoriteClick(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        var gridItem = e.currentTarget.closest('.gamut-lut__grid-item');
+        var id = parseInt(gridItem.getAttribute('data-id'), 10);
+        var idx = state.favorites.indexOf(id);
+
+        if (idx !== -1) {
+            state.favorites.splice(idx, 1);
+            gridItem.classList.remove('gamut-lut__grid-item--favorited');
+        } else {
+            state.favorites.push(id);
+            gridItem.classList.add('gamut-lut__grid-item--favorited');
+        }
+
+        // Update the heart icon fill.
+        var svg = e.currentTarget.querySelector('svg path');
+        if (svg) {
+            svg.setAttribute('fill', state.favorites.indexOf(id) !== -1 ? 'currentColor' : 'none');
+        }
+
+        saveFavorites();
+        updateFavoritesCount();
+
+        // Re-apply filter if favorites-only mode is active.
+        if (state.showFavoritesOnly) {
+            filterImages();
+        }
+    }
+
+    function onFavoritesToggle() {
+        state.showFavoritesOnly = !state.showFavoritesOnly;
+
+        if (dom.favoritesToggle) {
+            dom.favoritesToggle.classList.toggle('gamut-lut__favorites-toggle--active', state.showFavoritesOnly);
+        }
+
+        filterImages();
+    }
+
+    function updateFavoritesCount() {
+        if (dom.favoritesCount) {
+            dom.favoritesCount.textContent = state.favorites.length;
+            dom.favoritesCount.style.display = state.favorites.length > 0 ? '' : 'none';
+        }
+    }
+
+    // ======================================================
+    //  CATEGORY FILTER (with favorites integration)
+    // ======================================================
+
+    function onCategoryChange() {
+        state.activeCategory = dom.categoryFilter.value;
+        filterImages();
+    }
+
+    function filterImages() {
+        if (!dom.grid) return;
+
+        var items = dom.grid.querySelectorAll('.gamut-lut__grid-item');
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var id = parseInt(item.getAttribute('data-id'), 10);
+            var show = true;
+
+            // Category filter.
+            if (state.activeCategory) {
+                var cats = item.getAttribute('data-categories') || '';
+                if (cats.indexOf(state.activeCategory) === -1) {
+                    show = false;
+                }
+            }
+
+            // Favorites filter.
+            if (state.showFavoritesOnly && state.favorites.indexOf(id) === -1) {
+                show = false;
+            }
+
+            item.style.display = show ? '' : 'none';
+        }
+    }
+
+    // ======================================================
+    //  SHARE A LOOK
+    // ======================================================
+
+    // Pending deep-link state parsed from URL before data is loaded.
+    var pendingShareState = null;
+
+    /**
+     * Parse share parameters from the current URL.
+     */
+    function parseShareUrl() {
+        var params = new URLSearchParams(window.location.search);
+        var col = params.get('gamut_collection');
+        var lut = params.get('gamut_lut');
+        var img = params.get('gamut_image');
+        var intensity = params.get('gamut_intensity');
+
+        if (col && lut) {
+            pendingShareState = {
+                collection: col,
+                lut: parseInt(lut, 10),
+                image: img ? parseInt(img, 10) : null,
+                intensity: intensity ? parseInt(intensity, 10) : 100
+            };
+        }
+    }
+
+    /**
+     * Apply the pending share state after data is loaded.
+     */
+    function applyShareState() {
+        if (!pendingShareState) return;
+
+        var ss = pendingShareState;
+        pendingShareState = null;
+
+        // Select collection.
+        selectCollectionBySlug(ss.collection);
+
+        // Set intensity.
+        if (ss.intensity !== null && dom.intensitySlider) {
+            state.intensity = ss.intensity;
+            dom.intensitySlider.value = ss.intensity;
+            onIntensityChange();
+        }
+
+        // Select image.
+        if (ss.image) {
+            selectImageById(ss.image);
+        }
+
+        // Select LUT (with slight delay to allow preload).
+        if (ss.lut) {
+            setTimeout(function() {
+                selectLutById(ss.lut);
+            }, 100);
+        }
+    }
+
+    /**
+     * Handle share button click.
+     */
+    function onShareClick() {
+        if (!state.selectedCollection || !state.selectedLut) return;
+
+        var baseUrl = config.pageUrl || window.location.href.split('?')[0];
+        var params = new URLSearchParams();
+        params.set('gamut_collection', state.selectedCollection.slug);
+        params.set('gamut_lut', state.selectedLut.id);
+        if (state.selectedImage) {
+            params.set('gamut_image', state.selectedImage.id);
+        }
+        if (state.intensity !== 100) {
+            params.set('gamut_intensity', state.intensity);
+        }
+
+        var shareUrl = baseUrl + '?' + params.toString();
+
+        // Copy to clipboard.
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareUrl).then(function() {
+                showShareMessage('Link copied!');
+            }).catch(function() {
+                showShareFallback(shareUrl);
+            });
+        } else {
+            showShareFallback(shareUrl);
+        }
+
+        // Track analytics.
+        trackEvent('share_click', state.selectedLut.id, state.selectedLut.title, state.selectedCollection.slug);
+    }
+
+    function showShareFallback(url) {
+        prompt('Copy this link:', url);
+    }
+
+    function showShareMessage(text) {
+        if (!dom.shareMessage) return;
+        dom.shareMessage.textContent = text;
+        dom.shareMessage.style.display = 'block';
+        setTimeout(function() {
+            dom.shareMessage.style.display = 'none';
+        }, 2000);
+    }
+
+    // ======================================================
+    //  UPSELL / BUNDLING
+    // ======================================================
+
+    /**
+     * Render upsell section showing other purchasable collections.
+     */
+    function renderUpsell(currentCollection) {
+        if (!dom.upsellList || !dom.upsellSection) return;
+
+        var others = state.collections.filter(function(col) {
+            return col.slug !== currentCollection.slug && col.product_id;
+        });
+
+        if (others.length === 0) {
+            hideUpsell();
+            return;
+        }
+
+        var html = '';
+        others.forEach(function(col) {
+            html += '<button type="button" class="gamut-lut__upsell-item" data-slug="' + col.slug + '">';
+            html += '<span class="gamut-lut__upsell-name">' + escapeHtml(col.name) + '</span>';
+            html += '<span class="gamut-lut__upsell-count">' + col.lut_count + ' LUTs</span>';
+            html += '</button>';
+        });
+
+        dom.upsellList.innerHTML = html;
+        dom.upsellSection.style.display = '';
+
+        // Bind clicks.
+        var items = dom.upsellList.querySelectorAll('.gamut-lut__upsell-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].addEventListener('click', function(e) {
+                var slug = e.currentTarget.getAttribute('data-slug');
+                if (dom.collectionSelect) {
+                    dom.collectionSelect.value = slug;
+                }
+                selectCollectionBySlug(slug);
+            });
+        }
+    }
+
+    function hideUpsell() {
+        if (dom.upsellSection) dom.upsellSection.style.display = 'none';
+    }
+
+    // ======================================================
+    //  CART
+    // ======================================================
+
     function onAddToCart() {
         if (!state.selectedCollection || !state.selectedCollection.product_id) return;
 
@@ -533,9 +1062,211 @@ var GamutLutPreview = (function() {
             dom.cartBtn.disabled = false;
             showCartMessage('Network error. Please try again.', 'error');
         });
+
+        // Track analytics.
+        trackEvent('cart_click', state.selectedCollection.product_id, state.selectedCollection.name, state.selectedCollection.slug);
     }
 
-    // ---- UI Helpers ----
+    // ======================================================
+    //  ANALYTICS
+    // ======================================================
+
+    /**
+     * Track an analytics event via a lightweight AJAX ping.
+     * Non-blocking, fire-and-forget.
+     */
+    function trackEvent(eventType, objectId, title, collection) {
+        var formData = new FormData();
+        formData.append('action', 'gamut_track_preview');
+        formData.append('event_type', eventType);
+        formData.append('object_id', objectId);
+        formData.append('title', title || '');
+        formData.append('collection', collection || '');
+        formData.append('session_id', state.sessionId);
+
+        // Use sendBeacon if available for non-blocking, navigator.sendBeacon for unload.
+        // Otherwise fall back to fetch.
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(config.ajaxUrl, formData);
+        } else {
+            fetch(config.ajaxUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData,
+                keepalive: true
+            }).catch(function() {
+                // Silently fail analytics.
+            });
+        }
+    }
+
+    function generateSessionId() {
+        try {
+            var stored = sessionStorage.getItem('gamut_session_id');
+            if (stored) return stored;
+            var id = 'gs_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
+            sessionStorage.setItem('gamut_session_id', id);
+            return id;
+        } catch (e) {
+            return 'gs_' + Math.random().toString(36).substr(2, 12);
+        }
+    }
+
+    // ======================================================
+    //  MOBILE GESTURES
+    // ======================================================
+
+    /**
+     * Initialize mobile gesture support on the preview area.
+     * - Pinch-to-zoom on the canvas
+     * - Swipe left/right to cycle LUTs
+     */
+    function initMobileGestures() {
+        var target = dom.canvasWrap;
+        if (!target) return;
+
+        var touchState = {
+            startX: 0,
+            startY: 0,
+            startDist: 0,
+            startScale: 1,
+            currentScale: 1,
+            translateX: 0,
+            translateY: 0,
+            isPinching: false,
+            isSwiping: false,
+            startTime: 0
+        };
+
+        state.gestureState = touchState;
+
+        target.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                // Pinch start.
+                e.preventDefault();
+                touchState.isPinching = true;
+                touchState.isSwiping = false;
+                touchState.startDist = getTouchDistance(e.touches);
+                touchState.startScale = touchState.currentScale;
+            } else if (e.touches.length === 1) {
+                // Potential swipe.
+                touchState.startX = e.touches[0].clientX;
+                touchState.startY = e.touches[0].clientY;
+                touchState.startTime = Date.now();
+                touchState.isSwiping = true;
+                touchState.isPinching = false;
+            }
+        }, { passive: false });
+
+        target.addEventListener('touchmove', function(e) {
+            if (touchState.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                var dist = getTouchDistance(e.touches);
+                var scale = touchState.startScale * (dist / touchState.startDist);
+                touchState.currentScale = Math.max(1, Math.min(4, scale));
+
+                applyCanvasTransform(touchState);
+            }
+        }, { passive: false });
+
+        target.addEventListener('touchend', function(e) {
+            if (touchState.isPinching) {
+                touchState.isPinching = false;
+
+                // Snap back to 1x if close.
+                if (touchState.currentScale < 1.1) {
+                    touchState.currentScale = 1;
+                    touchState.translateX = 0;
+                    touchState.translateY = 0;
+                    applyCanvasTransform(touchState);
+                }
+                return;
+            }
+
+            if (touchState.isSwiping && e.changedTouches.length === 1) {
+                touchState.isSwiping = false;
+                var deltaX = e.changedTouches[0].clientX - touchState.startX;
+                var deltaY = e.changedTouches[0].clientY - touchState.startY;
+                var elapsed = Date.now() - touchState.startTime;
+
+                // If zoomed in, pan instead of swiping LUTs.
+                if (touchState.currentScale > 1) {
+                    touchState.translateX += deltaX;
+                    touchState.translateY += deltaY;
+                    applyCanvasTransform(touchState);
+                    return;
+                }
+
+                // Detect horizontal swipe: fast enough, horizontal enough.
+                if (elapsed < 400 && Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                    if (deltaX < 0) {
+                        cycleLut(1); // Swipe left = next.
+                    } else {
+                        cycleLut(-1); // Swipe right = previous.
+                    }
+                }
+            }
+        }, { passive: true });
+
+        // Double-tap to reset zoom.
+        var lastTap = 0;
+        target.addEventListener('touchend', function(e) {
+            if (e.touches.length > 0) return;
+            var now = Date.now();
+            if (now - lastTap < 300) {
+                touchState.currentScale = 1;
+                touchState.translateX = 0;
+                touchState.translateY = 0;
+                applyCanvasTransform(touchState);
+            }
+            lastTap = now;
+        }, { passive: true });
+    }
+
+    function getTouchDistance(touches) {
+        var dx = touches[0].clientX - touches[1].clientX;
+        var dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function applyCanvasTransform(ts) {
+        var canvas = dom.canvas;
+        if (!canvas) return;
+        canvas.style.transform = 'scale(' + ts.currentScale + ') translate(' + (ts.translateX / ts.currentScale) + 'px, ' + (ts.translateY / ts.currentScale) + 'px)';
+        canvas.style.transformOrigin = 'center center';
+    }
+
+    /**
+     * Cycle through LUTs in the current collection.
+     *
+     * @param {number} direction - +1 for next, -1 for previous.
+     */
+    function cycleLut(direction) {
+        if (!state.selectedCollection || !state.selectedCollection.luts.length) return;
+
+        var luts = state.selectedCollection.luts;
+        var currentIdx = -1;
+
+        if (state.selectedLut) {
+            for (var i = 0; i < luts.length; i++) {
+                if (luts[i].id === state.selectedLut.id) {
+                    currentIdx = i;
+                    break;
+                }
+            }
+        }
+
+        var nextIdx = currentIdx + direction;
+        if (nextIdx < 0) nextIdx = luts.length - 1;
+        if (nextIdx >= luts.length) nextIdx = 0;
+
+        dom.lutSelect.value = luts[nextIdx].id;
+        selectLutById(luts[nextIdx].id);
+    }
+
+    // ======================================================
+    //  UI HELPERS
+    // ======================================================
 
     function setLoading(loading) {
         state.isLoading = loading;
@@ -592,15 +1323,268 @@ var GamutLutPreview = (function() {
         return div.innerHTML;
     }
 
+    // ======================================================
+    //  COLLECTION EMBED INSTANCES
+    // ======================================================
+
+    /**
+     * Initialize any [gamut_collection] embed instances on the page.
+     */
+    function initEmbeds() {
+        var embeds = document.querySelectorAll('.gamut-lut--embed');
+        for (var i = 0; i < embeds.length; i++) {
+            initSingleEmbed(embeds[i]);
+        }
+    }
+
+    /**
+     * Initialize a single collection embed instance.
+     */
+    function initSingleEmbed(container) {
+        var collectionSlug = container.getAttribute('data-collection');
+        if (!collectionSlug || typeof gamutLutConfig === 'undefined') return;
+
+        var cfg = gamutLutConfig;
+        var headers = { 'X-WP-Nonce': cfg.nonce };
+        var embedState = {
+            collection: null,
+            selectedLut: null,
+            selectedImage: null,
+            intensity: 100,
+            compareMode: false,
+            cubeCache: new Map()
+        };
+
+        var canvas = container.querySelector('.gamut-lut__embed-canvas');
+        var lutSelect = container.querySelector('.gamut-lut__embed-lut-select');
+        var intensitySlider = container.querySelector('.gamut-lut__embed-intensity');
+        var intensityValue = container.querySelector('.gamut-lut__intensity-value');
+        var intensityGroup = container.querySelector('.gamut-lut__control-group--intensity');
+        var compareCheckbox = container.querySelector('.gamut-lut__embed-compare');
+        var cartBtn = container.querySelector('.gamut-lut__embed-cart-btn');
+        var cartSection = container.querySelector('.gamut-lut__cart');
+        var cartMessage = container.querySelector('.gamut-lut__cart-message');
+        var comparison = container.querySelector('.gamut-lut__comparison');
+        var canvasWrap = container.querySelector('.gamut-lut__canvas-wrap');
+        var emptyState = container.querySelector('.gamut-lut__empty-state');
+        var grid = container.querySelector('.gamut-lut__grid');
+        var cubeLoading = container.querySelector('.gamut-lut__cube-loading');
+
+        var embedEngine = canvas ? new GamutLutEngine(canvas) : null;
+        var embedSlider = null;
+
+        // Fetch collection and images data.
+        Promise.all([
+            fetch(cfg.restUrl + '/collection/' + encodeURIComponent(collectionSlug), { credentials: 'same-origin', headers: headers })
+                .then(function(r) { return r.json(); }),
+            fetch(cfg.restUrl + '/images', { credentials: 'same-origin', headers: headers })
+                .then(function(r) { return r.json(); })
+        ]).then(function(results) {
+            embedState.collection = results[0];
+            var imagesData = results[1];
+            var images = imagesData.images || [];
+
+            // Populate LUT dropdown.
+            var html = '<option value="">Select LUT</option>';
+            if (embedState.collection && embedState.collection.luts) {
+                embedState.collection.luts.forEach(function(lut) {
+                    html += '<option value="' + lut.id + '">' + escapeHtml(lut.title) + '</option>';
+                });
+            }
+            if (lutSelect) lutSelect.innerHTML = html;
+
+            // Show cart if product_id exists.
+            if (embedState.collection && embedState.collection.product_id && cartSection) {
+                cartSection.style.display = '';
+            }
+
+            // Render image grid.
+            if (grid && images.length) {
+                var gridHtml = '';
+                images.forEach(function(img) {
+                    gridHtml += '<div class="gamut-lut__grid-item" data-id="' + img.id + '">';
+                    gridHtml += '<img src="' + img.thumbnail + '" alt="' + escapeHtml(img.title) + '" loading="lazy" width="' + img.width + '" height="' + img.height + '">';
+                    gridHtml += '</div>';
+                });
+                grid.innerHTML = gridHtml;
+
+                // Bind image clicks.
+                var items = grid.querySelectorAll('.gamut-lut__grid-item');
+                for (var j = 0; j < items.length; j++) {
+                    items[j].addEventListener('click', function(e) {
+                        var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
+                        var img = null;
+                        for (var k = 0; k < images.length; k++) {
+                            if (images[k].id === id) { img = images[k]; break; }
+                        }
+                        if (!img || !embedEngine) return;
+
+                        // Update active.
+                        var prev = grid.querySelector('.gamut-lut__grid-item--active');
+                        if (prev) prev.classList.remove('gamut-lut__grid-item--active');
+                        e.currentTarget.classList.add('gamut-lut__grid-item--active');
+
+                        embedState.selectedImage = img;
+                        if (emptyState) emptyState.style.display = 'none';
+                        if (canvasWrap) canvasWrap.style.display = 'block';
+
+                        embedEngine.loadImage(img.url).then(function() {
+                            if (embedState.compareMode && embedSlider) {
+                                var before = embedEngine.getOriginalCanvas();
+                                var after = embedEngine.getGradedCanvas();
+                                embedSlider.updateImages(before, after);
+                                embedSlider.reset();
+                            }
+                        });
+                    });
+                }
+            }
+
+            // Preload LUTs.
+            if (embedState.collection && embedState.collection.luts) {
+                embedState.collection.luts.forEach(function(lut) {
+                    var url = cfg.restUrl + '/cube/' + lut.id;
+                    GamutCubeParser.fetchAndParse(url, cfg.nonce)
+                        .then(function(parsed) { embedState.cubeCache.set(lut.id, parsed); })
+                        .catch(function() {});
+                });
+            }
+        }).catch(function(err) {
+            console.error('GamutLutPreview: Embed fetch failed', err);
+        });
+
+        // LUT select handler.
+        if (lutSelect) {
+            lutSelect.addEventListener('change', function() {
+                var lutId = parseInt(lutSelect.value, 10);
+                if (!lutId || !embedState.collection) return;
+
+                var lut = null;
+                embedState.collection.luts.forEach(function(l) {
+                    if (l.id === lutId) lut = l;
+                });
+                if (!lut) return;
+
+                embedState.selectedLut = lut;
+
+                // Show intensity and compare controls.
+                if (intensityGroup) intensityGroup.style.display = '';
+                var compareParent = compareCheckbox ? compareCheckbox.closest('.gamut-lut__control-group') : null;
+                if (compareParent) compareParent.style.display = '';
+
+                var applyEmbedLut = function(parsed) {
+                    if (!embedEngine) return;
+                    embedEngine.loadLut(parsed);
+                    embedEngine.setIntensity(embedState.intensity / 100);
+                    embedEngine.render();
+                };
+
+                if (embedState.cubeCache.has(lutId)) {
+                    applyEmbedLut(embedState.cubeCache.get(lutId));
+                } else {
+                    if (cubeLoading) cubeLoading.style.display = 'inline-block';
+                    var url = cfg.restUrl + '/cube/' + lutId;
+                    GamutCubeParser.fetchAndParse(url, cfg.nonce)
+                        .then(function(parsed) {
+                            embedState.cubeCache.set(lutId, parsed);
+                            applyEmbedLut(parsed);
+                        })
+                        .finally(function() {
+                            if (cubeLoading) cubeLoading.style.display = 'none';
+                        });
+                }
+            });
+        }
+
+        // Intensity handler.
+        if (intensitySlider) {
+            intensitySlider.addEventListener('input', function() {
+                var val = parseInt(intensitySlider.value, 10);
+                embedState.intensity = val;
+                if (intensityValue) intensityValue.textContent = val + '%';
+                intensitySlider.style.background =
+                    'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + val + '%, var(--gamut-slider-track) ' + val + '%, var(--gamut-slider-track) 100%)';
+                if (embedEngine) {
+                    embedEngine.setIntensity(val / 100);
+                    embedEngine.render();
+                }
+            });
+        }
+
+        // Compare handler.
+        if (compareCheckbox) {
+            compareCheckbox.addEventListener('change', function() {
+                embedState.compareMode = compareCheckbox.checked;
+                if (embedState.compareMode && comparison && embedEngine) {
+                    comparison.style.display = 'block';
+                    if (canvasWrap) canvasWrap.style.display = 'none';
+                    if (!embedSlider) {
+                        embedSlider = new GamutComparisonSlider(comparison);
+                    }
+                    var before = embedEngine.getOriginalCanvas();
+                    var after = embedEngine.getGradedCanvas();
+                    embedSlider.updateImages(before, after);
+                    embedSlider.reset();
+                } else {
+                    if (comparison) comparison.style.display = 'none';
+                    if (canvasWrap && embedState.selectedImage) canvasWrap.style.display = 'block';
+                }
+            });
+        }
+
+        // Cart handler.
+        if (cartBtn) {
+            cartBtn.addEventListener('click', function() {
+                if (!embedState.collection || !embedState.collection.product_id) return;
+                cartBtn.disabled = true;
+
+                var formData = new FormData();
+                formData.append('action', 'gamut_add_to_cart');
+                formData.append('product_id', embedState.collection.product_id);
+                formData.append('nonce', cfg.cartNonce);
+
+                fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
+                    .then(function(r) { return r.json(); })
+                    .then(function(response) {
+                        cartBtn.disabled = false;
+                        if (cartMessage) {
+                            if (response.success) {
+                                cartMessage.innerHTML = response.data.in_cart
+                                    ? response.data.message + ' <a href="' + response.data.cart_url + '">View Cart</a>'
+                                    : response.data.message;
+                                cartMessage.className = 'gamut-lut__cart-message gamut-lut__cart-message--' + (response.data.in_cart ? 'info' : 'success');
+                            } else {
+                                cartMessage.textContent = response.data.message || 'Error adding to cart.';
+                                cartMessage.className = 'gamut-lut__cart-message gamut-lut__cart-message--error';
+                            }
+                            cartMessage.style.display = 'block';
+                        }
+                    })
+                    .catch(function() {
+                        cartBtn.disabled = false;
+                    });
+            });
+        }
+    }
+
+    // ======================================================
+    //  INITIALIZATION
+    // ======================================================
+
     // Initialize on DOM ready.
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+            initEmbeds();
+        });
     } else {
         init();
+        initEmbeds();
     }
 
     return {
         getState: function() { return state; },
-        getEngine: function() { return engine; }
+        getEngine: function() { return engine; },
+        cycleLut: cycleLut
     };
 })();

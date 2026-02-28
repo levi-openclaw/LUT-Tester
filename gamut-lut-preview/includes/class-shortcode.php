@@ -12,13 +12,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Gamut_LUT_Shortcode {
 
     private $enqueued = false;
+    private $embed_count = 0;
 
     public function __construct() {
         add_shortcode( 'gamut_lut_preview', array( $this, 'render' ) );
+        add_shortcode( 'gamut_collection', array( $this, 'render_collection_embed' ) );
     }
 
     /**
-     * Render the shortcode and enqueue assets.
+     * Render the full preview shortcode.
      *
      * @param array $atts Shortcode attributes.
      * @return string HTML output.
@@ -31,6 +33,37 @@ class Gamut_LUT_Shortcode {
 
         ob_start();
         include GAMUT_LUT_PATH . 'templates/preview-template.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Render a collection embed shortcode for blog posts.
+     *
+     * Usage: [gamut_collection slug="cinematic"]
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string HTML output.
+     */
+    public function render_collection_embed( $atts ) {
+        $atts = shortcode_atts( array(
+            'slug' => '',
+        ), $atts, 'gamut_collection' );
+
+        if ( empty( $atts['slug'] ) ) {
+            return '<p>' . esc_html__( 'Please specify a collection slug: [gamut_collection slug="your-collection"]', 'gamut-lut-preview' ) . '</p>';
+        }
+
+        if ( ! $this->enqueued ) {
+            $this->enqueue_assets();
+            $this->enqueued = true;
+        }
+
+        $this->embed_count++;
+        $collection_slug = sanitize_title( $atts['slug'] );
+        $instance_id     = 'gamut-collection-embed-' . $this->embed_count;
+
+        ob_start();
+        include GAMUT_LUT_PATH . 'templates/collection-embed-template.php';
         return ob_get_clean();
     }
 
@@ -88,6 +121,7 @@ class Gamut_LUT_Shortcode {
             'nonce'     => wp_create_nonce( 'wp_rest' ),
             'cartNonce' => wp_create_nonce( 'gamut_lut_nonce' ),
             'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+            'pageUrl'   => get_permalink(),
             'settings'  => array(
                 'title'             => get_option( 'gamut_lut_title', 'Preview Our LUTs' ),
                 'description'       => get_option( 'gamut_lut_description', '' ),

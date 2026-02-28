@@ -23,6 +23,7 @@
     --gamut-border: #A09555;
     --gamut-slider-track: #d7dcdf;
     --gamut-overlay: rgba(53, 59, 51, 0.37);
+    --gamut-favorite: #e74c3c;
 
     /* Typography */
     --gamut-font-body: 'Soleil', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -119,12 +120,16 @@
     display: none;
     background: #000;
     line-height: 0;
+    overflow: hidden;
+    touch-action: none;
 }
 
 .gamut-lut__canvas-wrap canvas {
     width: 100%;
     height: auto;
     display: block;
+    transition: transform 0.1s ease-out;
+    will-change: transform;
 }
 
 .gamut-lut__empty-state {
@@ -149,7 +154,10 @@
 
 .gamut-lut__control-group--lut,
 .gamut-lut__control-group--intensity,
-.gamut-lut__control-group--compare {
+.gamut-lut__control-group--compare,
+.gamut-lut__control-group--ab-compare,
+.gamut-lut__control-group--lut-b,
+.gamut-lut__control-group--share {
     display: none; /* Shown via JS when relevant */
 }
 
@@ -326,7 +334,8 @@
 /* ========================================
    Comparison Slider
    ======================================== */
-.gamut-lut__comparison {
+.gamut-lut__comparison,
+.gamut-lut__ab-comparison {
     position: relative;
     display: none;
     overflow: hidden;
@@ -481,6 +490,191 @@
 }
 
 /* ========================================
+   Share Button
+   ======================================== */
+.gamut-lut__share-btn {
+    width: 100%;
+    padding: 10px 20px;
+    background-color: transparent;
+    border: 1px solid var(--gamut-accent);
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-accent);
+    font-family: var(--gamut-font-label);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color var(--gamut-transition), color var(--gamut-transition);
+}
+
+.gamut-lut__share-btn:hover {
+    background-color: var(--gamut-accent);
+    color: var(--gamut-text);
+}
+
+.gamut-lut__share-message {
+    display: none;
+    margin-top: 6px;
+    font-family: var(--gamut-font-body);
+    font-size: 12px;
+    color: var(--gamut-accent);
+    text-align: center;
+}
+
+/* ========================================
+   Upsell / Collection Bundling
+   ======================================== */
+.gamut-lut__upsell {
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(160, 149, 85, 0.3);
+}
+
+.gamut-lut__upsell-heading {
+    font-family: var(--gamut-font-label);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--gamut-text-muted);
+    margin: 0 0 10px 0;
+    letter-spacing: 0.5px;
+}
+
+.gamut-lut__upsell-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gamut-lut__upsell-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--gamut-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-text);
+    font-family: var(--gamut-font-body);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color var(--gamut-transition), background-color var(--gamut-transition);
+}
+
+.gamut-lut__upsell-item:hover {
+    border-color: var(--gamut-accent);
+    background-color: var(--gamut-bg-input-hover);
+}
+
+.gamut-lut__upsell-name {
+    font-weight: 600;
+}
+
+.gamut-lut__upsell-count {
+    font-size: 11px;
+    color: var(--gamut-text-muted);
+}
+
+/* ========================================
+   Favorites
+   ======================================== */
+.gamut-lut__images-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gamut-lut__favorites-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--gamut-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-text-muted);
+    font-family: var(--gamut-font-body);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color var(--gamut-transition), color var(--gamut-transition);
+    white-space: nowrap;
+}
+
+.gamut-lut__favorites-toggle:hover {
+    border-color: var(--gamut-accent);
+    color: var(--gamut-text);
+}
+
+.gamut-lut__favorites-toggle--active {
+    border-color: var(--gamut-favorite);
+    color: var(--gamut-favorite);
+}
+
+.gamut-lut__favorites-toggle--active .gamut-lut__heart-icon {
+    color: var(--gamut-favorite);
+}
+
+.gamut-lut__heart-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.gamut-lut__favorites-count {
+    display: none;
+    background: var(--gamut-accent-dark);
+    color: var(--gamut-accent);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 8px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Favorite button on grid items */
+.gamut-lut__favorite-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 5;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--gamut-transition), color var(--gamut-transition), transform var(--gamut-transition);
+    padding: 0;
+}
+
+.gamut-lut__grid-item:hover .gamut-lut__favorite-btn,
+.gamut-lut__grid-item--favorited .gamut-lut__favorite-btn {
+    opacity: 1;
+}
+
+.gamut-lut__grid-item--favorited .gamut-lut__favorite-btn {
+    color: var(--gamut-favorite);
+}
+
+.gamut-lut__favorite-btn:hover {
+    transform: scale(1.15);
+}
+
+.gamut-lut__favorite-btn:active {
+    transform: scale(0.9);
+}
+
+/* ========================================
    Images Section
    ======================================== */
 .gamut-lut__images-section {
@@ -608,6 +802,43 @@
 }
 
 /* ========================================
+   Collection Embed Mode
+   ======================================== */
+.gamut-lut--embed {
+    max-width: 100%;
+    padding: 0;
+}
+
+.gamut-lut--embed .gamut-lut__embed-preview {
+    position: relative;
+}
+
+.gamut-lut--embed .gamut-lut__embed-controls {
+    padding: 16px 0;
+}
+
+.gamut-lut--embed .gamut-lut__embed-controls-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.gamut-lut--embed .gamut-lut__embed-controls-row .gamut-lut__control-group {
+    flex: 1;
+    min-width: 140px;
+}
+
+.gamut-lut--embed .gamut-lut__embed-images {
+    padding-top: 12px;
+}
+
+.gamut-lut__grid--embed {
+    grid-template-columns: repeat(6, 1fr);
+    margin-top: 0;
+}
+
+/* ========================================
    Responsive — Tablet (<=992px)
    ======================================== */
 @media (max-width: 992px) {
@@ -626,6 +857,10 @@
     .gamut-lut__empty-state {
         min-height: 300px;
     }
+
+    .gamut-lut__images-header {
+        flex-wrap: wrap;
+    }
 }
 
 /* ========================================
@@ -640,6 +875,10 @@
         grid-template-columns: repeat(4, 1fr);
     }
 
+    .gamut-lut__grid--embed {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
     .gamut-lut__select {
         width: 100%;
     }
@@ -651,6 +890,11 @@
 
     .gamut-lut__images-header {
         flex-direction: column;
+    }
+
+    .gamut-lut__images-filters {
+        width: 100%;
+        flex-wrap: wrap;
     }
 
     .gamut-lut__category-filter {
@@ -669,4 +913,41 @@
     .gamut-lut__empty-state {
         min-height: 216px;
     }
+
+    /* Favorites button always visible on touch devices */
+    .gamut-lut__favorite-btn {
+        opacity: 1;
+    }
+
+    /* Embed controls stack vertically on mobile */
+    .gamut-lut--embed .gamut-lut__embed-controls-row {
+        flex-direction: column;
+    }
+
+    .gamut-lut--embed .gamut-lut__embed-controls-row .gamut-lut__control-group {
+        width: 100%;
+    }
+
+    /* Swipe hint on mobile */
+    .gamut-lut__canvas-wrap::after {
+        content: '';
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        pointer-events: none;
+        opacity: 0;
+        animation: gamut-swipe-hint 3s ease-in-out 2s 1;
+    }
+}
+
+@keyframes gamut-swipe-hint {
+    0%, 100% { opacity: 0; }
+    20%, 80% { opacity: 1; }
+    30% { transform: translateX(-70%); }
+    70% { transform: translateX(-30%); }
 }

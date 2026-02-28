@@ -123,9 +123,15 @@ class Gamut_LUT_Admin_Settings {
             <hr>
 
             <h2><?php esc_html_e( 'Shortcode Usage', 'gamut-lut-preview' ); ?></h2>
-            <p><?php esc_html_e( 'Add the following shortcode to any page or post to display the LUT preview tool:', 'gamut-lut-preview' ); ?></p>
+            <p><?php esc_html_e( 'Add the following shortcode to any page or post to display the full LUT preview tool:', 'gamut-lut-preview' ); ?></p>
             <p><code>[gamut_lut_preview]</code></p>
-            <p><?php esc_html_e( 'The shortcode will only load its scripts and styles on pages where it is used.', 'gamut-lut-preview' ); ?></p>
+
+            <h3><?php esc_html_e( 'Collection Embed', 'gamut-lut-preview' ); ?></h3>
+            <p><?php esc_html_e( 'Embed a single collection into a blog post to showcase a specific LUT pack:', 'gamut-lut-preview' ); ?></p>
+            <p><code>[gamut_collection slug="your-collection-slug"]</code></p>
+            <p><?php esc_html_e( 'This displays a compact previewer scoped to one collection, ideal for product pages and blog posts.', 'gamut-lut-preview' ); ?></p>
+
+            <p><?php esc_html_e( 'Both shortcodes only load scripts and styles on pages where they are used.', 'gamut-lut-preview' ); ?></p>
         </div>
         <?php
     }

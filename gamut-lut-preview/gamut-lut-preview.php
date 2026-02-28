@@ -3,7 +3,7 @@
  * Plugin Name: Gamut LUT Preview
  * Plugin URI:  https://gamut.io
  * Description: Client-side WebGL LUT preview tool. Users select sample images, choose a LUT collection and individual LUT, and see instant before/after previews with intensity control.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Gamut
  * Author URI:  https://gamut.io
  * Text Domain: gamut-lut-preview
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'GAMUT_LUT_VERSION', '1.0.0' );
+define( 'GAMUT_LUT_VERSION', '1.1.0' );
 define( 'GAMUT_LUT_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GAMUT_LUT_URL', plugin_dir_url( __FILE__ ) );
 
@@ -40,6 +40,7 @@ require_once GAMUT_LUT_PATH . 'includes/class-admin-settings.php';
 require_once GAMUT_LUT_PATH . 'includes/class-shortcode.php';
 require_once GAMUT_LUT_PATH . 'includes/class-cart.php';
 require_once GAMUT_LUT_PATH . 'includes/class-bulk-upload.php';
+require_once GAMUT_LUT_PATH . 'includes/class-analytics.php';
 
 /**
  * Initialize all plugin classes.
@@ -53,6 +54,7 @@ function gamut_lut_init() {
     new Gamut_LUT_Shortcode();
     new Gamut_LUT_Cart();
     new Gamut_LUT_Bulk_Upload();
+    new Gamut_LUT_Analytics();
 }
 add_action( 'plugins_loaded', 'gamut_lut_init' );
 
@@ -64,6 +66,7 @@ function gamut_lut_activate() {
     $post_types->register();
     $taxonomies = new Gamut_LUT_Taxonomies();
     $taxonomies->register();
+    Gamut_LUT_Analytics::create_table();
     flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'gamut_lut_activate' );

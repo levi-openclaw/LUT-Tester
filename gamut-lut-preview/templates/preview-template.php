@@ -60,6 +60,26 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 <span class="gamut-lut__comparison-label gamut-lut__comparison-label--after"><?php esc_html_e( 'After', 'gamut-lut-preview' ); ?></span>
             </div>
 
+            <!-- A/B LUT Comparison (hidden until A/B mode enabled) -->
+            <div class="gamut-lut__ab-comparison" aria-label="<?php esc_attr_e( 'Compare two LUTs', 'gamut-lut-preview' ); ?>">
+                <div class="gamut-lut__comparison-after">
+                    <canvas></canvas>
+                </div>
+                <div class="gamut-lut__comparison-before">
+                    <canvas></canvas>
+                </div>
+                <div class="gamut-lut__comparison-handle"
+                     role="slider"
+                     tabindex="0"
+                     aria-label="<?php esc_attr_e( 'A/B comparison slider', 'gamut-lut-preview' ); ?>"
+                     aria-valuemin="0"
+                     aria-valuemax="100"
+                     aria-valuenow="50">
+                </div>
+                <span class="gamut-lut__comparison-label gamut-lut__comparison-label--before"></span>
+                <span class="gamut-lut__comparison-label gamut-lut__comparison-label--after"></span>
+            </div>
+
             <!-- Empty State -->
             <div class="gamut-lut__empty-state">
                 <?php esc_html_e( 'Select an image below to preview LUTs', 'gamut-lut-preview' ); ?>
@@ -120,12 +140,47 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 </label>
             </div>
 
+            <!-- A/B Compare Two LUTs (hidden until LUT chosen) -->
+            <div class="gamut-lut__control-group gamut-lut__control-group--ab-compare">
+                <label class="gamut-lut__checkbox-wrap">
+                    <input type="checkbox"
+                           id="gamut-lut-ab-compare"
+                           class="gamut-lut__checkbox"
+                           aria-label="<?php esc_attr_e( 'Compare two LUTs side by side', 'gamut-lut-preview' ); ?>">
+                    <span class="gamut-lut__checkbox-label"><?php esc_html_e( 'Compare Two LUTs', 'gamut-lut-preview' ); ?></span>
+                </label>
+            </div>
+
+            <!-- Second LUT selector for A/B mode (hidden until A/B enabled) -->
+            <div class="gamut-lut__control-group gamut-lut__control-group--lut-b">
+                <label class="gamut-lut__label" for="gamut-lut-select-b">
+                    <?php esc_html_e( 'Compare With', 'gamut-lut-preview' ); ?>
+                </label>
+                <select id="gamut-lut-select-b" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Select second LUT to compare', 'gamut-lut-preview' ); ?>">
+                    <option value=""><?php esc_html_e( 'Select LUT', 'gamut-lut-preview' ); ?></option>
+                </select>
+            </div>
+
+            <!-- Share a Look -->
+            <div class="gamut-lut__control-group gamut-lut__control-group--share">
+                <button type="button" id="gamut-lut-share-btn" class="gamut-lut__share-btn" aria-label="<?php esc_attr_e( 'Copy share link', 'gamut-lut-preview' ); ?>">
+                    <?php esc_html_e( 'SHARE THIS LOOK', 'gamut-lut-preview' ); ?>
+                </button>
+                <div class="gamut-lut__share-message"></div>
+            </div>
+
             <!-- Add to Cart (hidden until collection with product_id chosen) -->
             <div class="gamut-lut__cart">
                 <button type="button" id="gamut-lut-cart-btn" class="gamut-lut__cart-btn">
                     <?php esc_html_e( 'ADD TO CART', 'gamut-lut-preview' ); ?>
                 </button>
                 <div class="gamut-lut__cart-message"></div>
+            </div>
+
+            <!-- Upsell / Related Collections -->
+            <div class="gamut-lut__upsell">
+                <p class="gamut-lut__upsell-heading"><?php esc_html_e( 'Complete Your Collection', 'gamut-lut-preview' ); ?></p>
+                <div class="gamut-lut__upsell-list"></div>
             </div>
 
         </div><!-- .gamut-lut__controls -->
@@ -143,10 +198,17 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                     <p class="gamut-lut__images-description"><?php echo wp_kses_post( $images_description ); ?></p>
                 <?php endif; ?>
             </div>
-            <div class="gamut-lut__category-filter">
-                <select id="gamut-lut-category" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Filter images by category', 'gamut-lut-preview' ); ?>">
-                    <option value=""><?php esc_html_e( 'All', 'gamut-lut-preview' ); ?></option>
-                </select>
+            <div class="gamut-lut__images-filters">
+                <button type="button" id="gamut-lut-favorites-toggle" class="gamut-lut__favorites-toggle" aria-label="<?php esc_attr_e( 'Show favorite images only', 'gamut-lut-preview' ); ?>">
+                    <svg class="gamut-lut__heart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span><?php esc_html_e( 'Favorites', 'gamut-lut-preview' ); ?></span>
+                    <span class="gamut-lut__favorites-count">0</span>
+                </button>
+                <div class="gamut-lut__category-filter">
+                    <select id="gamut-lut-category" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Filter images by category', 'gamut-lut-preview' ); ?>">
+                        <option value=""><?php esc_html_e( 'All', 'gamut-lut-preview' ); ?></option>
+                    </select>
+                </div>
             </div>
         </div>
 
