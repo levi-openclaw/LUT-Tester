@@ -27,3 +27,26 @@
 #gamut-cube-remove-btn:hover {
     color: #dc3232;
 }
+
+/* Bulk Upload */
+.gamut-bulk-success {
+    padding: 10px 12px;
+    background: #f0f8e8;
+    border-left: 4px solid #46b450;
+    margin-bottom: 8px;
+}
+
+.gamut-bulk-errors {
+    padding: 10px 12px;
+    background: #fef7f1;
+    border-left: 4px solid #dc3232;
+    margin-bottom: 8px;
+}
+
+.gamut-bulk-success a {
+    text-decoration: none;
+}
+
+.gamut-bulk-success a:hover {
+    text-decoration: underline;
+}

@@ -39,6 +39,7 @@ require_once GAMUT_LUT_PATH . 'includes/class-rest-api.php';
 require_once GAMUT_LUT_PATH . 'includes/class-admin-settings.php';
 require_once GAMUT_LUT_PATH . 'includes/class-shortcode.php';
 require_once GAMUT_LUT_PATH . 'includes/class-cart.php';
+require_once GAMUT_LUT_PATH . 'includes/class-bulk-upload.php';
 
 /**
  * Initialize all plugin classes.
@@ -51,6 +52,7 @@ function gamut_lut_init() {
     new Gamut_LUT_Admin_Settings();
     new Gamut_LUT_Shortcode();
     new Gamut_LUT_Cart();
+    new Gamut_LUT_Bulk_Upload();
 }
 add_action( 'plugins_loaded', 'gamut_lut_init' );
 
