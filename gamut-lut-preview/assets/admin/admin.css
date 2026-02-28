@@ -4,6 +4,9 @@
  * @package Gamut_LUT_Preview
  */
 
+/* ========================================
+   Single LUT Meta Box (.cube upload)
+   ======================================== */
 #gamut-cube-upload {
     padding: 10px 0;
 }
@@ -28,25 +31,181 @@
     color: #dc3232;
 }
 
-/* Bulk Upload */
-.gamut-bulk-success {
-    padding: 10px 12px;
-    background: #f0f8e8;
-    border-left: 4px solid #46b450;
-    margin-bottom: 8px;
+/* ========================================
+   Collection Manager — LUT Table
+   ======================================== */
+.gamut-lut-table {
+    border-collapse: collapse;
+    margin-bottom: 0;
 }
 
-.gamut-bulk-errors {
-    padding: 10px 12px;
-    background: #fef7f1;
-    border-left: 4px solid #dc3232;
-    margin-bottom: 8px;
+.gamut-lut-table thead th {
+    padding: 8px 10px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #555;
 }
 
-.gamut-bulk-success a {
+.gamut-lut-table tbody tr {
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.gamut-lut-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.gamut-lut-table__row td {
+    padding: 8px 10px;
+    vertical-align: middle;
+}
+
+.gamut-lut-table__row:hover {
+    background: #f9f9f9;
+}
+
+.gamut-lut-table__drag {
+    cursor: grab;
+    color: #b4b9be;
+    text-align: center;
+}
+
+.gamut-lut-table__drag:active {
+    cursor: grabbing;
+}
+
+.gamut-lut-table__drag .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.gamut-lut-table__name {
+    font-weight: 600;
+}
+
+.gamut-lut-table__input {
+    width: 100%;
+    max-width: 300px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.gamut-lut-table__grid,
+.gamut-lut-table__size {
+    color: #666;
+    font-size: 12px;
+}
+
+.gamut-lut-table__empty td {
+    padding: 20px 10px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+/* Row actions (WordPress-style hover actions) */
+.gamut-lut-table__row .row-actions {
+    visibility: hidden;
+    padding-top: 2px;
+}
+
+.gamut-lut-table__row:hover .row-actions {
+    visibility: visible;
+}
+
+.gamut-lut-table__row .row-actions a {
     text-decoration: none;
+    font-size: 12px;
 }
 
-.gamut-bulk-success a:hover {
-    text-decoration: underline;
+.gamut-lut-table__row .row-actions .delete a {
+    color: #a00;
+}
+
+.gamut-lut-table__row .row-actions .delete a:hover {
+    color: #dc3232;
+}
+
+/* Save/Cancel buttons in rename mode */
+.gamut-save-rename-btn {
+    color: #0073aa;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gamut-cancel-rename-btn {
+    color: #666;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* Sortable placeholder */
+.gamut-lut-table__placeholder {
+    height: 40px;
+    background: #e8f0fe;
+    border: 2px dashed #4285f4;
+}
+
+/* Footer with upload button */
+.gamut-lut-table__footer {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gamut-lut-table__footer .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+#gamut-bulk-status {
+    color: #46b450;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* Full-width manager row in taxonomy form */
+.gamut-manager-row td {
+    padding-top: 15px;
+}
+
+/* ========================================
+   Bulk Sample Image Upload
+   ======================================== */
+.gamut-bulk-images-wrap {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-left: 4px solid #0073aa;
+    padding: 12px 16px;
+    margin: 15px 0;
+}
+
+.gamut-bulk-images-wrap h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+}
+
+.gamut-bulk-images-wrap .description {
+    margin-bottom: 10px;
+}
+
+.gamut-bulk-images-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.gamut-bulk-images-controls .postform {
+    max-width: 200px;
+}
+
+#gamut-bulk-images-status {
+    color: #46b450;
+    font-weight: 600;
+    font-size: 13px;
 }

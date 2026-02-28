@@ -1,189 +1,401 @@
 /**
- * Gamut LUT Preview — Bulk Upload JS
+ * Gamut LUT Preview — Admin Collection Manager + Bulk Upload
  *
- * Handles multi-file .cube upload on the LUT Collection edit screen.
- * Opens wp.media with multiple: true, then sends selected attachments
- * to an AJAX handler that creates gamut_lut_design posts in batch.
+ * Handles:
+ *  - Inline LUT table with rename, delete, drag-to-reorder
+ *  - Bulk .cube upload that inserts rows into the table instantly
+ *  - Bulk sample image upload on the Sample Images list screen
  *
  * @package Gamut_LUT_Preview
  */
 (function($) {
     'use strict';
 
-    var frame = null;
-    var selectedFiles = [];
+    // =========================================================================
+    // Collection Manager — LUT Table
+    // =========================================================================
+
+    var cubeFrame = null;
 
     /**
-     * Open the WordPress media uploader with multi-select.
+     * Initialize the collection manager (called on Edit Collection screen).
      */
-    function openBulkUploader(e) {
+    function initCollectionManager() {
+        var $manager = $('#gamut-collection-manager');
+        if (!$manager.length) return;
+
+        // Drag-to-reorder via jQuery UI Sortable.
+        $('#gamut-lut-tbody').sortable({
+            handle: '.gamut-lut-table__drag',
+            axis: 'y',
+            containment: '#gamut-lut-table',
+            placeholder: 'gamut-lut-table__placeholder',
+            items: '.gamut-lut-table__row',
+            update: function() {
+                saveOrder();
+            }
+        });
+
+        // Bulk upload button.
+        $manager.on('click', '#gamut-bulk-upload-btn', openCubeUploader);
+
+        // Inline rename.
+        $manager.on('click', '.gamut-rename-btn', startRename);
+        $manager.on('click', '.gamut-save-rename-btn', saveRename);
+        $manager.on('click', '.gamut-cancel-rename-btn', cancelRename);
+        $manager.on('keydown', '.gamut-lut-table__input', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $(this).closest('tr').find('.gamut-save-rename-btn').click();
+            }
+            if (e.key === 'Escape') {
+                $(this).closest('tr').find('.gamut-cancel-rename-btn').click();
+            }
+        });
+
+        // Delete.
+        $manager.on('click', '.gamut-delete-btn', deleteLut);
+    }
+
+    /**
+     * Open wp.media for multi-select .cube files, then create LUTs via AJAX.
+     * No confirmation step — select files and they're created immediately.
+     */
+    function openCubeUploader(e) {
         e.preventDefault();
 
-        if (frame) {
-            frame.open();
+        if (cubeFrame) {
+            cubeFrame.open();
             return;
         }
 
-        frame = wp.media({
+        cubeFrame = wp.media({
             title: 'Select .cube Files',
-            button: { text: 'Add Selected Files' },
+            button: { text: 'Upload & Create LUTs' },
             library: { type: 'text/plain' },
             multiple: true
         });
 
-        frame.on('select', function() {
-            var selection = frame.state().get('selection');
-            selectedFiles = [];
+        cubeFrame.on('select', function() {
+            var selection = cubeFrame.state().get('selection');
+            var files = [];
 
             selection.each(function(attachment) {
                 var data = attachment.toJSON();
-                // Only include files that look like .cube files.
                 if (data.filename && data.filename.match(/\.cube$/i)) {
-                    selectedFiles.push({
-                        id: data.id,
-                        url: data.url,
-                        filename: data.filename
-                    });
+                    files.push({ id: data.id, url: data.url, filename: data.filename });
                 }
             });
 
-            if (selectedFiles.length === 0) {
-                alert('No .cube files were selected. Please select files with the .cube extension.');
+            if (files.length === 0) {
+                alert('No .cube files found in selection.');
                 return;
             }
 
-            showFileList();
+            bulkCreateLuts(files);
         });
 
-        frame.open();
+        cubeFrame.open();
     }
 
     /**
-     * Show the list of selected files before creation.
+     * Send files to AJAX, add resulting rows to table instantly.
      */
-    function showFileList() {
-        var $list = $('#gamut-bulk-files');
-        $list.empty();
+    function bulkCreateLuts(files) {
+        var $manager = $('#gamut-collection-manager');
+        var termId = $manager.data('term-id');
 
-        selectedFiles.forEach(function(file) {
-            $list.append('<li>' + escapeHtml(file.filename) + '</li>');
-        });
-
-        $('#gamut-bulk-file-list').show();
-        $('#gamut-bulk-results').hide();
-    }
-
-    /**
-     * Send the selected files to the AJAX handler for batch creation.
-     */
-    function createLutDesigns(e) {
-        e.preventDefault();
-
-        var $container = $('#gamut-bulk-upload');
-        var termId = $container.data('term-id');
-
-        if (!termId || selectedFiles.length === 0) return;
-
-        // Show spinner, disable buttons.
-        $('#gamut-bulk-spinner').addClass('is-active');
-        $('#gamut-bulk-create-btn').prop('disabled', true);
-        $('#gamut-bulk-cancel-btn').prop('disabled', true);
+        setStatus('#gamut-bulk-spinner', '#gamut-bulk-status', gamutAdmin.uploading, true);
         $('#gamut-bulk-upload-btn').prop('disabled', true);
 
         $.ajax({
-            url: gamutBulkUpload.ajaxUrl,
+            url: gamutAdmin.ajaxUrl,
             type: 'POST',
             data: {
                 action: 'gamut_bulk_create_luts',
-                nonce: gamutBulkUpload.nonce,
+                nonce: gamutAdmin.nonce,
                 term_id: termId,
-                attachments: selectedFiles
+                attachments: files
             },
             success: function(response) {
-                $('#gamut-bulk-spinner').removeClass('is-active');
-                $('#gamut-bulk-create-btn').prop('disabled', false);
-                $('#gamut-bulk-cancel-btn').prop('disabled', false);
                 $('#gamut-bulk-upload-btn').prop('disabled', false);
-
-                if (response.success) {
-                    showResults(response.data);
+                if (response.success && response.data.created) {
+                    $('#gamut-lut-empty-row').remove();
+                    response.data.created.forEach(function(lut) {
+                        appendLutRow(lut);
+                    });
+                    setStatus('#gamut-bulk-spinner', '#gamut-bulk-status', response.data.created.length + ' LUT(s) added', false);
+                    fadeStatus('#gamut-bulk-status');
                 } else {
-                    showError(response.data.message || 'Unknown error occurred.');
+                    setStatus('#gamut-bulk-spinner', '#gamut-bulk-status', 'Error creating LUTs', false);
                 }
             },
             error: function() {
-                $('#gamut-bulk-spinner').removeClass('is-active');
-                $('#gamut-bulk-create-btn').prop('disabled', false);
-                $('#gamut-bulk-cancel-btn').prop('disabled', false);
                 $('#gamut-bulk-upload-btn').prop('disabled', false);
-                showError('Network error. Please try again.');
+                setStatus('#gamut-bulk-spinner', '#gamut-bulk-status', 'Network error', false);
             }
         });
     }
 
     /**
-     * Show creation results.
+     * Append a new LUT row to the table.
      */
-    function showResults(data) {
-        var $results = $('#gamut-bulk-results');
-        var html = '';
+    function appendLutRow(lut) {
+        var gridDisplay = lut.lut_size ? lut.lut_size + '\u00b3' : '\u2014';
+        var sizeDisplay = lut.file_size || '\u2014';
 
-        if (data.created && data.created.length > 0) {
-            html += '<div class="gamut-bulk-success">';
-            html += '<strong>' + data.created.length + ' LUT design(s) created:</strong>';
-            html += '<ul style="margin: 8px 0; list-style: disc; padding-left: 20px;">';
-            data.created.forEach(function(item) {
-                html += '<li><a href="' + escapeHtml(item.edit) + '" target="_blank">' + escapeHtml(item.title) + '</a></li>';
-            });
-            html += '</ul></div>';
-        }
+        var html = '<tr class="gamut-lut-table__row" data-post-id="' + lut.id + '">' +
+            '<td class="gamut-lut-table__drag"><span class="dashicons dashicons-menu"></span></td>' +
+            '<td class="gamut-lut-table__title">' +
+                '<span class="gamut-lut-table__name">' + escapeHtml(lut.title) + '</span>' +
+                '<input type="text" class="gamut-lut-table__input" value="' + escapeHtml(lut.title) + '" style="display:none;">' +
+                '<div class="row-actions">' +
+                    '<span class="inline"><a href="#" class="gamut-rename-btn">Rename</a> | </span>' +
+                    '<span class="delete"><a href="#" class="gamut-delete-btn">Delete</a></span>' +
+                '</div>' +
+            '</td>' +
+            '<td class="gamut-lut-table__grid">' + escapeHtml(gridDisplay) + '</td>' +
+            '<td class="gamut-lut-table__size">' + escapeHtml(sizeDisplay) + '</td>' +
+            '<td class="gamut-lut-table__actions">' +
+                '<button type="button" class="button-link gamut-save-rename-btn" style="display:none;">Save</button>' +
+                '<button type="button" class="button-link gamut-cancel-rename-btn" style="display:none;">Cancel</button>' +
+            '</td>' +
+        '</tr>';
 
-        if (data.errors && data.errors.length > 0) {
-            html += '<div class="gamut-bulk-errors">';
-            html += '<strong>Errors:</strong>';
-            html += '<ul style="margin: 8px 0; list-style: disc; padding-left: 20px;">';
-            data.errors.forEach(function(err) {
-                html += '<li>' + escapeHtml(err) + '</li>';
-            });
-            html += '</ul></div>';
-        }
-
-        $results.html(html).show();
-        $('#gamut-bulk-file-list').hide();
-        selectedFiles = [];
+        $('#gamut-lut-tbody').append(html);
+        $('#gamut-lut-tbody').sortable('refresh');
     }
 
-    /**
-     * Show an error message.
-     */
-    function showError(message) {
-        var $results = $('#gamut-bulk-results');
-        $results.html('<div class="gamut-bulk-errors"><strong>Error:</strong> ' + escapeHtml(message) + '</div>').show();
-    }
+    // ---- Inline Rename ----
 
-    /**
-     * Cancel the current selection.
-     */
-    function cancelSelection(e) {
+    function startRename(e) {
         e.preventDefault();
-        selectedFiles = [];
-        $('#gamut-bulk-file-list').hide();
-        $('#gamut-bulk-results').hide();
+        var $row = $(this).closest('tr');
+        $row.find('.gamut-lut-table__name').hide();
+        $row.find('.row-actions').hide();
+        $row.find('.gamut-lut-table__input').show().focus().select();
+        $row.find('.gamut-save-rename-btn, .gamut-cancel-rename-btn').show();
+    }
+
+    function saveRename(e) {
+        e.preventDefault();
+        var $row = $(this).closest('tr');
+        var postId = $row.data('post-id');
+        var newTitle = $row.find('.gamut-lut-table__input').val().trim();
+
+        if (!newTitle) {
+            cancelRename.call(this, e);
+            return;
+        }
+
+        $row.find('.gamut-save-rename-btn').text(gamutAdmin.saving);
+
+        $.ajax({
+            url: gamutAdmin.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'gamut_rename_lut',
+                nonce: gamutAdmin.nonce,
+                post_id: postId,
+                title: newTitle
+            },
+            success: function(response) {
+                if (response.success) {
+                    $row.find('.gamut-lut-table__name').text(response.data.title).show();
+                    $row.find('.gamut-lut-table__input').val(response.data.title).hide();
+                } else {
+                    $row.find('.gamut-lut-table__name').show();
+                    $row.find('.gamut-lut-table__input').hide();
+                }
+                $row.find('.row-actions').show();
+                $row.find('.gamut-save-rename-btn').text('Save').hide();
+                $row.find('.gamut-cancel-rename-btn').hide();
+            }
+        });
+    }
+
+    function cancelRename(e) {
+        e.preventDefault();
+        var $row = $(this).closest('tr');
+        var currentTitle = $row.find('.gamut-lut-table__name').text();
+        $row.find('.gamut-lut-table__input').val(currentTitle).hide();
+        $row.find('.gamut-lut-table__name').show();
+        $row.find('.row-actions').show();
+        $row.find('.gamut-save-rename-btn, .gamut-cancel-rename-btn').hide();
+    }
+
+    // ---- Delete ----
+
+    function deleteLut(e) {
+        e.preventDefault();
+        if (!confirm(gamutAdmin.confirmDelete)) return;
+
+        var $row = $(this).closest('tr');
+        var postId = $row.data('post-id');
+
+        $row.css('opacity', '0.5');
+
+        $.ajax({
+            url: gamutAdmin.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'gamut_delete_lut',
+                nonce: gamutAdmin.nonce,
+                post_id: postId
+            },
+            success: function(response) {
+                if (response.success) {
+                    $row.fadeOut(200, function() {
+                        $(this).remove();
+                        if ($('#gamut-lut-tbody .gamut-lut-table__row').length === 0) {
+                            $('#gamut-lut-tbody').append(
+                                '<tr class="gamut-lut-table__empty" id="gamut-lut-empty-row">' +
+                                '<td colspan="5">No LUTs yet. Upload .cube files below.</td></tr>'
+                            );
+                        }
+                    });
+                } else {
+                    $row.css('opacity', '1');
+                }
+            },
+            error: function() {
+                $row.css('opacity', '1');
+            }
+        });
+    }
+
+    // ---- Reorder (auto-saves on drop) ----
+
+    function saveOrder() {
+        var order = [];
+        $('#gamut-lut-tbody .gamut-lut-table__row').each(function() {
+            order.push($(this).data('post-id'));
+        });
+
+        $.ajax({
+            url: gamutAdmin.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'gamut_reorder_luts',
+                nonce: gamutAdmin.nonce,
+                order: order
+            }
+        });
+    }
+
+    // =========================================================================
+    // Bulk Sample Image Upload
+    // =========================================================================
+
+    var imageFrame = null;
+
+    function initBulkImages() {
+        var $wrap = $('#gamut-bulk-images');
+        if (!$wrap.length) return;
+
+        $wrap.on('click', '#gamut-bulk-images-btn', openImageUploader);
     }
 
     /**
-     * Escape HTML entities.
+     * Open wp.media for multi-select images. Select → created immediately.
      */
+    function openImageUploader(e) {
+        e.preventDefault();
+
+        if (imageFrame) {
+            imageFrame.open();
+            return;
+        }
+
+        imageFrame = wp.media({
+            title: 'Select Sample Images',
+            button: { text: 'Add as Sample Images' },
+            library: { type: 'image' },
+            multiple: true
+        });
+
+        imageFrame.on('select', function() {
+            var selection = imageFrame.state().get('selection');
+            var images = [];
+
+            selection.each(function(attachment) {
+                var data = attachment.toJSON();
+                images.push({ id: data.id, title: data.title || data.filename });
+            });
+
+            if (images.length === 0) return;
+
+            bulkCreateImages(images);
+        });
+
+        imageFrame.open();
+    }
+
+    function bulkCreateImages(images) {
+        var categoryId = $('#gamut-bulk-image-category').val() || 0;
+
+        setStatus('#gamut-bulk-images-spinner', '#gamut-bulk-images-status', gamutAdmin.uploadingImages, true);
+        $('#gamut-bulk-images-btn').prop('disabled', true);
+
+        $.ajax({
+            url: gamutAdmin.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'gamut_bulk_create_images',
+                nonce: gamutAdmin.nonce,
+                images: images,
+                category_id: categoryId
+            },
+            success: function(response) {
+                $('#gamut-bulk-images-btn').prop('disabled', false);
+                if (response.success) {
+                    setStatus('#gamut-bulk-images-spinner', '#gamut-bulk-images-status', response.data.message, false);
+                    setTimeout(function() { location.reload(); }, 800);
+                } else {
+                    setStatus('#gamut-bulk-images-spinner', '#gamut-bulk-images-status', response.data.message || 'Error', false);
+                }
+            },
+            error: function() {
+                $('#gamut-bulk-images-btn').prop('disabled', false);
+                setStatus('#gamut-bulk-images-spinner', '#gamut-bulk-images-status', 'Network error', false);
+            }
+        });
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    function setStatus(spinnerSel, statusSel, text, spinning) {
+        if (spinning) {
+            $(spinnerSel).addClass('is-active');
+        } else {
+            $(spinnerSel).removeClass('is-active');
+        }
+        $(statusSel).text(text);
+    }
+
+    function fadeStatus(statusSel) {
+        setTimeout(function() {
+            $(statusSel).fadeOut(400, function() {
+                $(this).text('').show();
+            });
+        }, 2500);
+    }
+
     function escapeHtml(str) {
         var div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
+        div.appendChild(document.createTextNode(str || ''));
         return div.innerHTML;
     }
 
+    // =========================================================================
+    // Init
+    // =========================================================================
+
     $(document).ready(function() {
-        $('#gamut-bulk-upload-btn').on('click', openBulkUploader);
-        $('#gamut-bulk-create-btn').on('click', createLutDesigns);
-        $('#gamut-bulk-cancel-btn').on('click', cancelSelection);
+        initCollectionManager();
+        initBulkImages();
     });
 
 })(jQuery);
