@@ -193,7 +193,7 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
                 <?php endif; ?>
             </div>
             <div class="gamut-lut__images-filters">
-                <button type="button" id="gamut-lut-favorites-toggle" class="gamut-lut__favorites-toggle" aria-label="<?php esc_attr_e( 'Show favorite images only', 'gamut-lut-preview' ); ?>">
+                <button type="button" id="gamut-lut-favorites-toggle" class="gamut-lut__favorites-toggle" aria-label="<?php esc_attr_e( 'Show favorite images only', 'gamut-lut-preview' ); ?>" aria-pressed="false">
                     <svg class="gamut-lut__heart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                     <span><?php esc_html_e( 'Favorites', 'gamut-lut-preview' ); ?></span>
                     <span class="gamut-lut__favorites-count">0</span>

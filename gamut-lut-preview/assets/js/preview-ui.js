@@ -988,11 +988,13 @@ var GamutLutPreview = (function() {
             gridItem.classList.add('gamut-lut__grid-item--favorited');
         }
 
-        // Update the heart icon fill.
+        // Update the heart icon fill and aria-label.
+        var isFav = state.favorites.indexOf(id) !== -1;
         var svg = e.currentTarget.querySelector('svg path');
         if (svg) {
-            svg.setAttribute('fill', state.favorites.indexOf(id) !== -1 ? 'currentColor' : 'none');
+            svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
         }
+        e.currentTarget.setAttribute('aria-label', isFav ? 'Remove from favorites' : 'Add to favorites');
 
         saveFavoritesLocal();
         saveFavoritesToServer();
@@ -1624,34 +1626,44 @@ var GamutLutPreview = (function() {
                 });
                 grid.innerHTML = gridHtml;
 
-                // Bind image clicks.
+                // Bind image clicks and keyboard activation.
                 var items = grid.querySelectorAll('.gamut-lut__grid-item');
                 for (var j = 0; j < items.length; j++) {
                     items[j].addEventListener('click', function(e) {
                         var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
-                        var img = null;
-                        for (var k = 0; k < images.length; k++) {
-                            if (images[k].id === id) { img = images[k]; break; }
+                        selectEmbedImage(id, e.currentTarget);
+                    });
+                    items[j].addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
+                            selectEmbedImage(id, e.currentTarget);
                         }
-                        if (!img || !embedEngine) return;
+                    });
+                }
 
-                        // Update active.
-                        var prev = grid.querySelector('.gamut-lut__grid-item--active');
-                        if (prev) prev.classList.remove('gamut-lut__grid-item--active');
-                        e.currentTarget.classList.add('gamut-lut__grid-item--active');
+                function selectEmbedImage(id, el) {
+                    var img = null;
+                    for (var k = 0; k < images.length; k++) {
+                        if (images[k].id === id) { img = images[k]; break; }
+                    }
+                    if (!img || !embedEngine) return;
 
-                        embedState.selectedImage = img;
-                        if (emptyState) emptyState.style.display = 'none';
-                        if (canvasWrap) canvasWrap.style.display = 'block';
+                    var prev = grid.querySelector('.gamut-lut__grid-item--active');
+                    if (prev) prev.classList.remove('gamut-lut__grid-item--active');
+                    el.classList.add('gamut-lut__grid-item--active');
 
-                        embedEngine.loadImage(img.url).then(function() {
-                            if (embedState.compareMode && embedSlider) {
-                                var before = embedEngine.getOriginalCanvas();
-                                var after = embedEngine.captureCanvas();
-                                embedSlider.updateImages(before, after);
-                                embedSlider.reset();
-                            }
-                        });
+                    embedState.selectedImage = img;
+                    if (emptyState) emptyState.style.display = 'none';
+                    if (canvasWrap) canvasWrap.style.display = 'block';
+
+                    embedEngine.loadImage(img.url).then(function() {
+                        if (embedState.compareMode && embedSlider) {
+                            var before = embedEngine.getOriginalCanvas();
+                            var after = embedEngine.captureCanvas();
+                            embedSlider.updateImages(before, after);
+                            embedSlider.reset();
+                        }
                     });
                 }
             }
