@@ -1,0 +1,672 @@
+/**
+ * Gamut LUT Preview — Frontend Styles
+ *
+ * BEM methodology with CSS custom properties scoped to .gamut-lut.
+ * Self-contained: no external image dependencies.
+ *
+ * @package Gamut_LUT_Preview
+ */
+
+/* ========================================
+   Design Tokens
+   ======================================== */
+.gamut-lut {
+    /* Colors */
+    --gamut-bg-primary: #171915;
+    --gamut-bg-input: #353B33;
+    --gamut-bg-input-hover: #3d443a;
+    --gamut-accent: #A09555;
+    --gamut-accent-dark: #48421c;
+    --gamut-accent-hover: #b0a565;
+    --gamut-text: #FFFFFF;
+    --gamut-text-muted: rgba(255, 255, 255, 0.7);
+    --gamut-border: #A09555;
+    --gamut-slider-track: #d7dcdf;
+    --gamut-overlay: rgba(53, 59, 51, 0.37);
+
+    /* Typography */
+    --gamut-font-body: 'Soleil', -apple-system, BlinkMacSystemFont, sans-serif;
+    --gamut-font-label: 'Geogrotesque', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Spacing */
+    --gamut-gap: 30px;
+    --gamut-gap-sm: 10px;
+    --gamut-section-spacing: 30px;
+
+    /* Sizing */
+    --gamut-max-width: 1320px;
+    --gamut-sidebar-width: 31%;
+    --gamut-preview-width: 69%;
+    --gamut-select-padding: 13px 10px;
+    --gamut-border-radius: 0px;
+
+    /* Transitions */
+    --gamut-transition: 0.15s ease-in-out;
+}
+
+/* ========================================
+   Root Container
+   ======================================== */
+.gamut-lut {
+    max-width: var(--gamut-max-width);
+    margin: 0 auto;
+    padding: 0 20px;
+    background-color: var(--gamut-bg-primary);
+    color: var(--gamut-text);
+    font-family: var(--gamut-font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.gamut-lut *,
+.gamut-lut *::before,
+.gamut-lut *::after {
+    box-sizing: border-box;
+}
+
+/* ========================================
+   Header
+   ======================================== */
+.gamut-lut__header {
+    padding: var(--gamut-section-spacing) 0;
+}
+
+.gamut-lut__title {
+    font-family: var(--gamut-font-body);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 25px;
+    color: var(--gamut-text);
+    margin: 0 0 8px 0;
+}
+
+.gamut-lut__description {
+    font-family: var(--gamut-font-body);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 16px;
+    color: var(--gamut-text-muted);
+    margin: 0;
+}
+
+/* ========================================
+   Main Layout (Preview + Controls)
+   ======================================== */
+.gamut-lut__main {
+    display: flex;
+    gap: var(--gamut-gap);
+}
+
+.gamut-lut__preview {
+    width: var(--gamut-preview-width);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.gamut-lut__controls {
+    width: var(--gamut-sidebar-width);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ========================================
+   Canvas & Empty State
+   ======================================== */
+.gamut-lut__canvas-wrap {
+    position: relative;
+    display: none;
+    background: #000;
+    line-height: 0;
+}
+
+.gamut-lut__canvas-wrap canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gamut-lut__empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: var(--gamut-bg-input);
+    color: var(--gamut-text-muted);
+    font-size: 16px;
+    font-weight: 300;
+}
+
+/* ========================================
+   Control Groups
+   ======================================== */
+.gamut-lut__control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gamut-lut__control-group--lut,
+.gamut-lut__control-group--intensity,
+.gamut-lut__control-group--compare {
+    display: none; /* Shown via JS when relevant */
+}
+
+.gamut-lut__label {
+    font-family: var(--gamut-font-label);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 17px;
+    color: var(--gamut-text);
+    text-transform: uppercase;
+}
+
+/* ========================================
+   Select Dropdowns
+   ======================================== */
+.gamut-lut__select {
+    width: 100%;
+    padding: var(--gamut-select-padding);
+    background-color: var(--gamut-bg-input);
+    border: none;
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-text);
+    font-family: var(--gamut-font-body);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 16px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    transition: background-color var(--gamut-transition);
+
+    /* Inline SVG dropdown arrow */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23A09555' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: calc(100% - 12px) center;
+    background-size: 12px 8px;
+    padding-right: 32px;
+}
+
+.gamut-lut__select:hover {
+    background-color: var(--gamut-bg-input-hover);
+}
+
+.gamut-lut__select:focus {
+    outline: 2px solid var(--gamut-accent);
+    outline-offset: -2px;
+}
+
+.gamut-lut__select option {
+    background-color: var(--gamut-bg-input);
+    color: var(--gamut-text);
+}
+
+/* ========================================
+   Range Slider (Intensity)
+   ======================================== */
+.gamut-lut__intensity-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gamut-lut__range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: 185px;
+    height: 5px;
+    border-radius: 5px;
+    background: linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) 100%, var(--gamut-slider-track) 100%, var(--gamut-slider-track) 100%);
+    outline: none;
+    cursor: pointer;
+}
+
+/* Webkit thumb */
+.gamut-lut__range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gamut-accent);
+    cursor: pointer;
+    transition: transform var(--gamut-transition), background-color var(--gamut-transition);
+}
+
+.gamut-lut__range::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Firefox thumb */
+.gamut-lut__range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: none;
+    background: var(--gamut-accent);
+    cursor: pointer;
+    transition: transform var(--gamut-transition);
+}
+
+.gamut-lut__range::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+
+.gamut-lut__intensity-value {
+    font-family: var(--gamut-font-body);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 11px;
+    color: var(--gamut-text);
+    min-width: 32px;
+    text-align: center;
+    background: var(--gamut-bg-input);
+    padding: 4px 6px;
+    border-radius: 2px;
+}
+
+/* ========================================
+   Checkbox (Compare Toggle)
+   ======================================== */
+.gamut-lut__checkbox-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.gamut-lut__checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--gamut-accent);
+    border-radius: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.gamut-lut__checkbox:checked {
+    background-color: var(--gamut-accent);
+}
+
+.gamut-lut__checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 0px;
+    left: 2px;
+    width: 4px;
+    height: 6px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.gamut-lut__checkbox:focus {
+    outline: 2px solid var(--gamut-accent);
+    outline-offset: 2px;
+}
+
+.gamut-lut__checkbox-label {
+    font-family: var(--gamut-font-body);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 13px;
+    letter-spacing: 0.5px;
+    color: var(--gamut-text);
+    cursor: pointer;
+}
+
+/* ========================================
+   Comparison Slider
+   ======================================== */
+.gamut-lut__comparison {
+    position: relative;
+    display: none;
+    overflow: hidden;
+    background: #000;
+    line-height: 0;
+}
+
+.gamut-lut__comparison-after {
+    position: relative;
+}
+
+.gamut-lut__comparison-after canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gamut-lut__comparison-before {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    clip-path: inset(0 50% 0 0);
+}
+
+.gamut-lut__comparison-before canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gamut-lut__comparison-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 3px;
+    background: #fff;
+    z-index: 2;
+    cursor: ew-resize;
+    transform: translateX(-50%);
+}
+
+.gamut-lut__comparison-handle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    opacity: 0.7;
+    background: transparent;
+}
+
+/* Handle arrows via inline SVG */
+.gamut-lut__comparison-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M8 5L3 12L8 19M16 5L21 12L16 19' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.gamut-lut__comparison-label {
+    position: absolute;
+    top: 12px;
+    z-index: 3;
+    font-family: var(--gamut-font-label);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 10px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.gamut-lut__comparison-label--before {
+    left: 12px;
+}
+
+.gamut-lut__comparison-label--after {
+    right: 12px;
+}
+
+/* ========================================
+   Cart Button & Messages
+   ======================================== */
+.gamut-lut__cart {
+    display: none;
+    margin-top: 10px;
+}
+
+.gamut-lut__cart-btn {
+    width: 100%;
+    padding: 13.2px 20px;
+    background-color: var(--gamut-accent);
+    border: none;
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-text);
+    font-family: var(--gamut-font-label);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color var(--gamut-transition);
+}
+
+.gamut-lut__cart-btn:hover {
+    background-color: var(--gamut-accent-hover);
+}
+
+.gamut-lut__cart-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.gamut-lut__cart-message {
+    display: none;
+    margin-top: 10px;
+    padding: 8px 12px;
+    font-family: var(--gamut-font-body);
+    font-size: 13px;
+    font-weight: 400;
+    border-radius: 2px;
+}
+
+.gamut-lut__cart-message--success {
+    color: var(--gamut-accent);
+}
+
+.gamut-lut__cart-message--info {
+    color: var(--gamut-text-muted);
+}
+
+.gamut-lut__cart-message--info a {
+    color: var(--gamut-accent);
+    text-decoration: underline;
+}
+
+.gamut-lut__cart-message--error {
+    color: #e74c3c;
+}
+
+/* ========================================
+   Images Section
+   ======================================== */
+.gamut-lut__images-section {
+    margin-top: var(--gamut-section-spacing);
+    padding-top: var(--gamut-section-spacing);
+    border-top: 2px solid var(--gamut-border);
+}
+
+.gamut-lut__images-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.gamut-lut__images-title {
+    font-family: var(--gamut-font-body);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--gamut-text);
+    margin: 0;
+}
+
+.gamut-lut__images-description {
+    font-family: var(--gamut-font-body);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 16px;
+    color: var(--gamut-text-muted);
+    margin: 4px 0 0 0;
+}
+
+.gamut-lut__category-filter {
+    flex-shrink: 0;
+}
+
+.gamut-lut__category-filter .gamut-lut__select {
+    width: auto;
+    min-width: 150px;
+}
+
+/* ========================================
+   Image Grid
+   ======================================== */
+.gamut-lut__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--gamut-gap-sm);
+    margin-top: 20px;
+}
+
+.gamut-lut__grid-item {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.gamut-lut__grid-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform var(--gamut-transition);
+}
+
+.gamut-lut__grid-item:hover img {
+    transform: scale(1.05);
+}
+
+/* Active state: accent border overlay */
+.gamut-lut__grid-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px solid transparent;
+    transition: border-color var(--gamut-transition);
+    pointer-events: none;
+}
+
+.gamut-lut__grid-item--active::after {
+    border-color: var(--gamut-accent);
+}
+
+/* ========================================
+   Loading Overlay
+   ======================================== */
+.gamut-lut__loading {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    background: var(--gamut-overlay);
+}
+
+.gamut-lut__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--gamut-accent);
+    border-radius: 50%;
+    animation: gamut-spin 0.6s linear infinite;
+}
+
+.gamut-lut__cube-loading {
+    display: none;
+}
+
+.gamut-lut__spinner--small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+@keyframes gamut-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========================================
+   Responsive — Tablet (<=992px)
+   ======================================== */
+@media (max-width: 992px) {
+    .gamut-lut__main {
+        flex-direction: column-reverse;
+    }
+
+    .gamut-lut__preview {
+        width: 100%;
+    }
+
+    .gamut-lut__controls {
+        width: 100%;
+    }
+
+    .gamut-lut__empty-state {
+        min-height: 300px;
+    }
+}
+
+/* ========================================
+   Responsive — Mobile (<=600px)
+   ======================================== */
+@media (max-width: 600px) {
+    .gamut-lut {
+        padding: 0 12px;
+    }
+
+    .gamut-lut__grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .gamut-lut__select {
+        width: 100%;
+    }
+
+    .gamut-lut__range {
+        max-width: none;
+        width: 100%;
+    }
+
+    .gamut-lut__images-header {
+        flex-direction: column;
+    }
+
+    .gamut-lut__category-filter {
+        width: 100%;
+    }
+
+    .gamut-lut__category-filter .gamut-lut__select {
+        width: 100%;
+    }
+
+    .gamut-lut__comparison-handle::before {
+        width: 38px;
+        height: 38px;
+    }
+
+    .gamut-lut__empty-state {
+        min-height: 216px;
+    }
+}

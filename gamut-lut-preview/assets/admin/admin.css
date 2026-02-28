@@ -1,0 +1,29 @@
+/**
+ * Gamut LUT Preview — Admin Styles
+ *
+ * @package Gamut_LUT_Preview
+ */
+
+#gamut-cube-upload {
+    padding: 10px 0;
+}
+
+#gamut-cube-info {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #f9f9f9;
+    border-left: 4px solid #0073aa;
+}
+
+#gamut-cube-info p {
+    margin: 4px 0;
+}
+
+#gamut-cube-remove-btn {
+    margin-left: 8px;
+    color: #a00;
+}
+
+#gamut-cube-remove-btn:hover {
+    color: #dc3232;
+}
