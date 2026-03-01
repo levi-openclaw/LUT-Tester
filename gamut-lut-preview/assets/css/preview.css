@@ -78,18 +78,19 @@
     font-family: var(--gamut-font-heading);
     font-size: 22px;
     font-weight: 600;
-    line-height: 25px;
+    line-height: 1.3;
     color: var(--gamut-text);
-    margin: 0 0 8px 0;
+    margin: 0 0 12px 0;
 }
 
 .gamut-lut__description {
     font-family: var(--gamut-font-body);
     font-size: 14px;
     font-weight: 300;
-    line-height: 16px;
+    line-height: 1.6;
     color: var(--gamut-text-muted);
     margin: 0;
+    max-width: 600px;
 }
 
 /* ========================================
@@ -772,10 +773,10 @@
 }
 
 .gamut-lut__images-title {
-    font-family: var(--gamut-font-body);
+    font-family: var(--gamut-font-heading);
     font-size: 18px;
     font-weight: 600;
-    line-height: 20px;
+    line-height: 1.3;
     color: var(--gamut-text);
     margin: 0;
 }
@@ -784,9 +785,10 @@
     font-family: var(--gamut-font-body);
     font-size: 14px;
     font-weight: 300;
-    line-height: 16px;
+    line-height: 1.6;
     color: var(--gamut-text-muted);
-    margin: 4px 0 0 0;
+    margin: 8px 0 0 0;
+    max-width: 500px;
 }
 
 .gamut-lut__category-filter {

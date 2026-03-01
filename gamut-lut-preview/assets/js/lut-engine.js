@@ -144,13 +144,15 @@ var GamutLutEngine = (function() {
         gl.uniform1f(this._uniforms.intensity, this.intensity);
 
         // Create fullscreen quad geometry.
-        // Positions: clip space (-1 to 1), TexCoords: (0 to 1, flipped Y for image).
+        // Positions: clip space (-1 to 1).
+        // TexCoords: v is flipped (1 at bottom, 0 at top) so that HTML image
+        // data (origin top-left) renders right-side-up in the GL viewport.
         var vertices = new Float32Array([
             // pos x, pos y, tex u, tex v
-            -1, -1,  0, 0,
-             1, -1,  1, 0,
-            -1,  1,  0, 1,
-             1,  1,  1, 1
+            -1, -1,  0, 1,
+             1, -1,  1, 1,
+            -1,  1,  0, 0,
+             1,  1,  1, 0
         ]);
 
         var vao = gl.createVertexArray();
@@ -251,13 +253,11 @@ var GamutLutEngine = (function() {
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this._imageTexture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
         gl.viewport(0, 0, img.naturalWidth, img.naturalHeight);
     };
