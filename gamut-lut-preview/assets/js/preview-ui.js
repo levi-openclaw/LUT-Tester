@@ -539,6 +539,13 @@ var GamutLutPreview = (function() {
 
         // Preload all .cube files for this collection in the background.
         preloadCollection(col);
+
+        // Auto-select first LUT in the collection.
+        if (col.luts && col.luts.length > 0) {
+            setTimeout(function() {
+                selectLutById(col.luts[0].id);
+            }, 50);
+        }
     }
 
     /**

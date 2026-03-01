@@ -2,6 +2,9 @@
 /**
  * Template for the [gamut_lut_preview] shortcode.
  *
+ * Layout: 3-panel (Images left, Preview center, Controls right).
+ * Follows Lightroom/Capture One pattern for image editing UIs.
+ *
  * @package Gamut_LUT_Preview
  */
 
@@ -26,10 +29,38 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
         <?php endif; ?>
     </div>
 
-    <!-- Main: Preview + Controls -->
-    <div class="gamut-lut__main">
+    <!-- 3-Panel Body: Images | Preview | Controls -->
+    <div class="gamut-lut__body">
 
-        <!-- Preview Area -->
+        <!-- Left Panel: Image Selection -->
+        <aside class="gamut-lut__images-panel">
+            <div class="gamut-lut__images-panel-header">
+                <?php if ( $images_title ) : ?>
+                    <h3 class="gamut-lut__images-title"><?php echo esc_html( $images_title ); ?></h3>
+                <?php endif; ?>
+                <div class="gamut-lut__images-filters">
+                    <button type="button" id="gamut-lut-favorites-toggle" class="gamut-lut__favorites-toggle" aria-label="<?php esc_attr_e( 'Show favorite images only', 'gamut-lut-preview' ); ?>" aria-pressed="false">
+                        <svg class="gamut-lut__heart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span class="gamut-lut__favorites-count">0</span>
+                    </button>
+                    <div class="gamut-lut__category-filter">
+                        <select id="gamut-lut-category" class="gamut-lut__select gamut-lut__select--compact" aria-label="<?php esc_attr_e( 'Filter images by category', 'gamut-lut-preview' ); ?>">
+                            <option value=""><?php esc_html_e( 'All', 'gamut-lut-preview' ); ?></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="gamut-lut__images-scroll">
+                <div class="gamut-lut__grid">
+                    <!-- Image grid populated by JS -->
+                </div>
+                <div class="gamut-lut__grid-empty" style="display: none;">
+                    <?php esc_html_e( 'No favorites yet. Click the heart icon on any image to save it.', 'gamut-lut-preview' ); ?>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Panel: Preview Canvas -->
         <div class="gamut-lut__preview">
 
             <!-- Main Canvas (hidden until image selected) -->
@@ -83,11 +114,11 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
 
             <!-- Empty State -->
             <div class="gamut-lut__empty-state">
-                <?php esc_html_e( 'Select an image below to preview LUTs', 'gamut-lut-preview' ); ?>
+                <?php esc_html_e( 'Select an image to preview LUTs', 'gamut-lut-preview' ); ?>
             </div>
         </div>
 
-        <!-- Controls Sidebar -->
+        <!-- Right Panel: Controls -->
         <div class="gamut-lut__controls">
 
             <!-- LUT Collection Selector -->
@@ -189,39 +220,6 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
 
         </div><!-- .gamut-lut__controls -->
 
-    </div><!-- .gamut-lut__main -->
-
-    <!-- Images Section -->
-    <div class="gamut-lut__images-section">
-        <div class="gamut-lut__images-header">
-            <div>
-                <?php if ( $images_title ) : ?>
-                    <h3 class="gamut-lut__images-title"><?php echo esc_html( $images_title ); ?></h3>
-                <?php endif; ?>
-                <?php if ( $images_description ) : ?>
-                    <p class="gamut-lut__images-description"><?php echo wp_kses_post( $images_description ); ?></p>
-                <?php endif; ?>
-            </div>
-            <div class="gamut-lut__images-filters">
-                <button type="button" id="gamut-lut-favorites-toggle" class="gamut-lut__favorites-toggle" aria-label="<?php esc_attr_e( 'Show favorite images only', 'gamut-lut-preview' ); ?>" aria-pressed="false">
-                    <svg class="gamut-lut__heart-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    <span><?php esc_html_e( 'Favorites', 'gamut-lut-preview' ); ?></span>
-                    <span class="gamut-lut__favorites-count">0</span>
-                </button>
-                <div class="gamut-lut__category-filter">
-                    <select id="gamut-lut-category" class="gamut-lut__select" aria-label="<?php esc_attr_e( 'Filter images by category', 'gamut-lut-preview' ); ?>">
-                        <option value=""><?php esc_html_e( 'All', 'gamut-lut-preview' ); ?></option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="gamut-lut__grid">
-            <!-- Image grid populated by JS -->
-        </div>
-        <div class="gamut-lut__grid-empty" style="display: none;">
-            <?php esc_html_e( 'No favorites yet. Click the heart icon on any image to save it.', 'gamut-lut-preview' ); ?>
-        </div>
-    </div><!-- .gamut-lut__images-section -->
+    </div><!-- .gamut-lut__body -->
 
 </div><!-- #gamut-lut-preview -->
