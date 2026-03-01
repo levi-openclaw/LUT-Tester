@@ -1144,3 +1144,236 @@
     30% { transform: translateX(-70%); }
     70% { transform: translateX(-30%); }
 }
+
+/* ========================================
+   WooCommerce Product Page — LUT Section
+   Dark background, serif headings, thin dividers,
+   numbered LUT list, price + CTA.
+   ======================================== */
+.gamut-product-lut {
+    background-color: var(--gamut-bg, #1e2319);
+    color: var(--gamut-text, #f0ede8);
+    padding: clamp(2rem, 4vw, 4rem) clamp(1.5rem, 4vw, 4rem);
+    margin-top: 2rem;
+
+    /* Inherit design tokens from .gamut-lut if nested, otherwise define fallbacks */
+    --gamut-accent: #8b9a6b;
+    --gamut-accent-hover: #9dab7e;
+    --gamut-bg: #1e2319;
+    --gamut-bg-elevated: #2a2f25;
+    --gamut-border: #3a3f34;
+    --gamut-border-input: #4a5040;
+    --gamut-text: #f0ede8;
+    --gamut-text-muted: #b8b3aa;
+    --gamut-text-dim: #8a857d;
+    --gamut-border-radius: 2px;
+    --gamut-transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --gamut-transition-fast: 150ms ease;
+}
+
+.gamut-product-lut *,
+.gamut-product-lut *::before,
+.gamut-product-lut *::after {
+    box-sizing: border-box;
+}
+
+/* Two-column layout: Preview (left), Info (right) */
+.gamut-product-lut__layout {
+    display: flex;
+    gap: clamp(2rem, 4vw, 4rem);
+    align-items: flex-start;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Left column: embedded previewer — takes ~60% */
+.gamut-product-lut__preview-col {
+    flex: 3;
+    min-width: 0;
+}
+
+/* Right column: collection info + LUT list — takes ~40% */
+.gamut-product-lut__info-col {
+    flex: 2;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    padding-top: 0.5rem;
+}
+
+/* Collection heading — serif font */
+.gamut-product-lut__header {
+    margin-bottom: 1.5rem;
+}
+
+.gamut-product-lut__title {
+    font-family: 'Calluna', Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+    font-weight: 400;
+    line-height: 1.2;
+    margin: 0 0 0.5rem 0;
+    color: var(--gamut-text);
+    letter-spacing: 0.01em;
+}
+
+.gamut-product-lut__subtitle {
+    font-size: 0.8125rem;
+    color: var(--gamut-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin: 0;
+}
+
+/* Thin divider lines */
+.gamut-product-lut__divider {
+    height: 1px;
+    background: var(--gamut-border);
+    border: none;
+    margin: 0;
+}
+
+/* LUT item list */
+.gamut-product-lut__lut-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gamut-border) transparent;
+}
+
+.gamut-product-lut__lut-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.gamut-product-lut__lut-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.gamut-product-lut__lut-list::-webkit-scrollbar-thumb {
+    background: var(--gamut-border);
+    border-radius: 2px;
+}
+
+/* Individual LUT item row */
+.gamut-product-lut__lut-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 0.25rem;
+    cursor: pointer;
+    transition: background-color var(--gamut-transition-fast);
+    border-radius: var(--gamut-border-radius);
+}
+
+.gamut-product-lut__lut-item:hover {
+    background-color: var(--gamut-bg-elevated);
+}
+
+.gamut-product-lut__lut-item--active {
+    background-color: var(--gamut-bg-elevated);
+}
+
+/* Zero-padded number (01, 02, ...) */
+.gamut-product-lut__lut-number {
+    font-family: 'Calluna', Georgia, 'Times New Roman', serif;
+    font-size: 0.875rem;
+    color: var(--gamut-text-dim);
+    min-width: 1.75rem;
+    flex-shrink: 0;
+}
+
+/* LUT name */
+.gamut-product-lut__lut-name {
+    font-size: 0.9375rem;
+    color: var(--gamut-text-muted);
+    transition: color var(--gamut-transition-fast);
+}
+
+.gamut-product-lut__lut-item:hover .gamut-product-lut__lut-name {
+    color: var(--gamut-text);
+}
+
+.gamut-product-lut__lut-item--active .gamut-product-lut__lut-name {
+    color: var(--gamut-text);
+}
+
+/* Price + CTA section */
+.gamut-product-lut__cta {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gamut-product-lut__price {
+    font-family: 'Calluna', Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    color: var(--gamut-text);
+}
+
+/* WooCommerce price overrides for dark background */
+.gamut-product-lut__price .woocommerce-Price-amount {
+    color: var(--gamut-text);
+}
+
+.gamut-product-lut__price del {
+    color: var(--gamut-text-dim);
+}
+
+.gamut-product-lut__price ins {
+    text-decoration: none;
+}
+
+/* Product-specific embed overrides */
+.gamut-lut--product {
+    background: transparent;
+}
+
+.gamut-lut--product .gamut-lut__embed-preview {
+    border-radius: var(--gamut-border-radius);
+    overflow: hidden;
+}
+
+.gamut-lut--product .gamut-lut__embed-controls {
+    padding: 0.75rem 0;
+}
+
+.gamut-lut--product .gamut-lut__cart {
+    display: none !important;
+}
+
+/* ---- Product section responsive ---- */
+@media (max-width: 992px) {
+    .gamut-product-lut__layout {
+        flex-direction: column;
+    }
+
+    .gamut-product-lut__preview-col {
+        width: 100%;
+    }
+
+    .gamut-product-lut__info-col {
+        width: 100%;
+        min-width: 0;
+        padding-top: 0;
+    }
+
+    .gamut-product-lut__lut-list {
+        max-height: 240px;
+    }
+}
+
+@media (max-width: 600px) {
+    .gamut-product-lut {
+        padding: 1.5rem 1rem;
+    }
+
+    .gamut-product-lut__title {
+        font-size: 1.25rem;
+    }
+
+    .gamut-product-lut__lut-list {
+        max-height: 200px;
+    }
+}
