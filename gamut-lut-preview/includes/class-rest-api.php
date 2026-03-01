@@ -360,7 +360,8 @@ class Gamut_LUT_REST_API {
      * @return array
      */
     private function build_single_collection( $term ) {
-        $product_id = get_term_meta( $term->term_id, 'gamut_product_id', true );
+        $product_id  = get_term_meta( $term->term_id, 'gamut_product_id', true );
+        $product_url = get_term_meta( $term->term_id, 'gamut_product_url', true );
 
         $luts  = array();
         $query = new WP_Query( array(
@@ -389,11 +390,12 @@ class Gamut_LUT_REST_API {
         }
 
         return array(
-            'slug'       => $term->slug,
-            'name'       => $term->name,
-            'product_id' => $product_id ? (int) $product_id : null,
-            'lut_count'  => count( $luts ),
-            'luts'       => $luts,
+            'slug'        => $term->slug,
+            'name'        => $term->name,
+            'product_id'  => $product_id ? (int) $product_id : null,
+            'product_url' => $product_url ? $product_url : null,
+            'lut_count'   => count( $luts ),
+            'luts'        => $luts,
         );
     }
 

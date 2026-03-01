@@ -210,6 +210,11 @@ class Gamut_LUT_Taxonomies {
             <?php $this->render_product_select( 0 ); ?>
             <p class="description"><?php esc_html_e( 'Link this collection to a WooCommerce product for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
         </div>
+        <div class="form-field">
+            <label for="gamut_product_url"><?php esc_html_e( 'External Product URL', 'gamut-lut-preview' ); ?></label>
+            <input type="url" name="gamut_product_url" id="gamut_product_url" value="" />
+            <p class="description"><?php esc_html_e( 'If no WooCommerce product is linked, the "Add to Cart" button will open this URL instead.', 'gamut-lut-preview' ); ?></p>
+        </div>
         <?php
     }
 
@@ -219,7 +224,8 @@ class Gamut_LUT_Taxonomies {
      * @param WP_Term $term Current taxonomy term object.
      */
     public function edit_collection_fields( $term ) {
-        $product_id = absint( get_term_meta( $term->term_id, 'gamut_product_id', true ) );
+        $product_id  = absint( get_term_meta( $term->term_id, 'gamut_product_id', true ) );
+        $product_url = esc_url( get_term_meta( $term->term_id, 'gamut_product_url', true ) );
         ?>
         <tr class="form-field">
             <th scope="row">
@@ -228,6 +234,15 @@ class Gamut_LUT_Taxonomies {
             <td>
                 <?php $this->render_product_select( $product_id ); ?>
                 <p class="description"><?php esc_html_e( 'Link this collection to a WooCommerce product for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th scope="row">
+                <label for="gamut_product_url"><?php esc_html_e( 'External Product URL', 'gamut-lut-preview' ); ?></label>
+            </th>
+            <td>
+                <input type="url" name="gamut_product_url" id="gamut_product_url" value="<?php echo esc_attr( $product_url ); ?>" style="width: 100%;" />
+                <p class="description"><?php esc_html_e( 'If no WooCommerce product is linked, the "Add to Cart" button will open this URL instead.', 'gamut-lut-preview' ); ?></p>
             </td>
         </tr>
         <?php
@@ -242,6 +257,10 @@ class Gamut_LUT_Taxonomies {
         if ( isset( $_POST['gamut_product_id'] ) ) {
             $product_id = absint( $_POST['gamut_product_id'] );
             update_term_meta( $term_id, 'gamut_product_id', $product_id );
+        }
+        if ( isset( $_POST['gamut_product_url'] ) ) {
+            $product_url = esc_url_raw( wp_unslash( $_POST['gamut_product_url'] ) );
+            update_term_meta( $term_id, 'gamut_product_url', $product_url );
         }
     }
 }

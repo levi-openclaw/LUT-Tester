@@ -527,8 +527,8 @@ var GamutLutPreview = (function() {
         revealControlGroup(dom.lutSelectBGroup, false);
         revealControlGroup(dom.shareGroup, false);
 
-        // Show/hide cart button based on product_id.
-        if (col.product_id) {
+        // Show/hide cart button based on product_id or product_url.
+        if (col.product_id || col.product_url) {
             showCart();
         } else {
             hideCart();
@@ -1392,14 +1392,26 @@ var GamutLutPreview = (function() {
     // ======================================================
 
     function onAddToCart() {
-        if (!state.selectedCollection || !state.selectedCollection.product_id) return;
+        if (!state.selectedCollection) return;
+
+        var col = state.selectedCollection;
+        var lutTitle = state.selectedLut ? state.selectedLut.title : col.name;
+
+        // External product URL: open in a new tab.
+        if (!col.product_id && col.product_url) {
+            window.open(col.product_url, '_blank', 'noopener');
+            trackEvent('cart_add', 0, lutTitle, col.slug);
+            return;
+        }
+
+        if (!col.product_id) return;
 
         dom.cartBtn.disabled = true;
         hideCartMessage();
 
         var formData = new FormData();
         formData.append('action', 'gamut_add_to_cart');
-        formData.append('product_id', state.selectedCollection.product_id);
+        formData.append('product_id', col.product_id);
         formData.append('nonce', config.cartNonce);
 
         fetch(config.ajaxUrl, {
@@ -1428,7 +1440,7 @@ var GamutLutPreview = (function() {
         });
 
         // Track analytics — record both the product and which LUT was being previewed.
-        trackEvent('cart_add', state.selectedCollection.product_id, state.selectedLut ? state.selectedLut.title : state.selectedCollection.name, state.selectedCollection.slug);
+        trackEvent('cart_add', col.product_id, lutTitle, col.slug);
     }
 
     // ======================================================
@@ -1774,8 +1786,8 @@ var GamutLutPreview = (function() {
             }
             if (lutSelect) lutSelect.innerHTML = html;
 
-            // Show cart if product_id exists.
-            if (embedState.collection && embedState.collection.product_id && cartSection) {
+            // Show cart if product_id or product_url exists.
+            if (embedState.collection && (embedState.collection.product_id || embedState.collection.product_url) && cartSection) {
                 cartSection.style.display = '';
             }
 
@@ -1926,12 +1938,22 @@ var GamutLutPreview = (function() {
         // Cart handler.
         if (cartBtn) {
             cartBtn.addEventListener('click', function() {
-                if (!embedState.collection || !embedState.collection.product_id) return;
+                if (!embedState.collection) return;
+
+                var col = embedState.collection;
+
+                // External product URL: open in a new tab.
+                if (!col.product_id && col.product_url) {
+                    window.open(col.product_url, '_blank', 'noopener');
+                    return;
+                }
+
+                if (!col.product_id) return;
                 cartBtn.disabled = true;
 
                 var formData = new FormData();
                 formData.append('action', 'gamut_add_to_cart');
-                formData.append('product_id', embedState.collection.product_id);
+                formData.append('product_id', col.product_id);
                 formData.append('nonce', cfg.cartNonce);
 
                 fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
