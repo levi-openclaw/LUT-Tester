@@ -19,6 +19,9 @@ class Gamut_LUT_Taxonomies {
         add_action( 'gamut_lut_collection_edit_form_fields', array( $this, 'edit_collection_fields' ) );
         add_action( 'created_gamut_lut_collection', array( $this, 'save_collection_fields' ) );
         add_action( 'edited_gamut_lut_collection', array( $this, 'save_collection_fields' ) );
+
+        // Enqueue Select2 on the collection taxonomy screens.
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_product_select_assets' ) );
     }
 
     /**
@@ -90,14 +93,122 @@ class Gamut_LUT_Taxonomies {
     }
 
     /**
+     * Enqueue Select2 assets on the LUT Collection taxonomy screens.
+     *
+     * @param string $hook_suffix Current admin page hook suffix.
+     */
+    public function enqueue_product_select_assets( $hook_suffix ) {
+        if ( ! in_array( $hook_suffix, array( 'edit-tags.php', 'term.php' ), true ) ) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if ( ! $screen || 'gamut_lut_collection' !== $screen->taxonomy ) {
+            return;
+        }
+
+        // Use WooCommerce's bundled Select2 (selectWoo) if available, otherwise skip enhancement.
+        if ( wp_script_is( 'selectWoo', 'registered' ) ) {
+            wp_enqueue_script( 'selectWoo' );
+            wp_enqueue_style( 'select2' );
+        }
+
+        wp_add_inline_script( 'selectWoo', '
+            jQuery(function($) {
+                function initProductSelect() {
+                    var $select = $("#gamut_product_id");
+                    if ($select.length && $.fn.selectWoo) {
+                        $select.selectWoo({
+                            placeholder: "' . esc_js( __( 'Search for a product...', 'gamut-lut-preview' ) ) . '",
+                            allowClear: true,
+                            width: "100%"
+                        });
+                    }
+                }
+                initProductSelect();
+                $(document).ajaxComplete(function(event, xhr, settings) {
+                    if (settings.data && settings.data.indexOf("action=add-tag") !== -1) {
+                        setTimeout(initProductSelect, 200);
+                    }
+                });
+            });
+        ' );
+    }
+
+    /**
+     * Get published WooCommerce products for the dropdown.
+     *
+     * @return array Array of [ id => title ] pairs.
+     */
+    private function get_product_options() {
+        $products = array();
+
+        if ( ! post_type_exists( 'product' ) ) {
+            return $products;
+        }
+
+        $query = new WP_Query( array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+            'fields'         => 'ids',
+        ) );
+
+        if ( $query->posts ) {
+            foreach ( $query->posts as $id ) {
+                $price = get_post_meta( $id, '_price', true );
+                $label = get_the_title( $id );
+                if ( $price ) {
+                    $label .= ' — $' . number_format( (float) $price, 2 );
+                }
+                $label .= ' (#' . $id . ')';
+                $products[ $id ] = $label;
+            }
+        }
+
+        return $products;
+    }
+
+    /**
+     * Render the product select dropdown HTML.
+     *
+     * @param int $selected_id Currently selected product ID.
+     */
+    private function render_product_select( $selected_id = 0 ) {
+        $products = $this->get_product_options();
+
+        if ( empty( $products ) && ! post_type_exists( 'product' ) ) {
+            echo '<input type="number" name="gamut_product_id" id="gamut_product_id" value="' . esc_attr( $selected_id ) . '" min="0" step="1">';
+            echo '<p class="description">' . esc_html__( 'WooCommerce is not active. Enter a product ID manually.', 'gamut-lut-preview' ) . '</p>';
+            return;
+        }
+
+        echo '<select name="gamut_product_id" id="gamut_product_id" style="min-width: 300px;">';
+        echo '<option value="0">' . esc_html__( '— No product linked —', 'gamut-lut-preview' ) . '</option>';
+
+        foreach ( $products as $id => $label ) {
+            printf(
+                '<option value="%d" %s>%s</option>',
+                $id,
+                selected( $selected_id, $id, false ),
+                esc_html( $label )
+            );
+        }
+
+        echo '</select>';
+    }
+
+    /**
      * Add product ID field to the "Add New Collection" form.
      */
     public function add_collection_fields() {
         ?>
         <div class="form-field">
-            <label for="gamut_product_id"><?php esc_html_e( 'WooCommerce Product ID', 'gamut-lut-preview' ); ?></label>
-            <input type="number" name="gamut_product_id" id="gamut_product_id" value="" min="0" step="1">
-            <p class="description"><?php esc_html_e( 'The WooCommerce product ID for this LUT collection. Used for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
+            <label for="gamut_product_id"><?php esc_html_e( 'WooCommerce Product', 'gamut-lut-preview' ); ?></label>
+            <?php $this->render_product_select( 0 ); ?>
+            <p class="description"><?php esc_html_e( 'Link this collection to a WooCommerce product for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
         </div>
         <?php
     }
@@ -108,15 +219,15 @@ class Gamut_LUT_Taxonomies {
      * @param WP_Term $term Current taxonomy term object.
      */
     public function edit_collection_fields( $term ) {
-        $product_id = get_term_meta( $term->term_id, 'gamut_product_id', true );
+        $product_id = absint( get_term_meta( $term->term_id, 'gamut_product_id', true ) );
         ?>
         <tr class="form-field">
             <th scope="row">
-                <label for="gamut_product_id"><?php esc_html_e( 'WooCommerce Product ID', 'gamut-lut-preview' ); ?></label>
+                <label for="gamut_product_id"><?php esc_html_e( 'WooCommerce Product', 'gamut-lut-preview' ); ?></label>
             </th>
             <td>
-                <input type="number" name="gamut_product_id" id="gamut_product_id" value="<?php echo esc_attr( $product_id ); ?>" min="0" step="1">
-                <p class="description"><?php esc_html_e( 'The WooCommerce product ID for this LUT collection. Used for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
+                <?php $this->render_product_select( $product_id ); ?>
+                <p class="description"><?php esc_html_e( 'Link this collection to a WooCommerce product for the Add to Cart button.', 'gamut-lut-preview' ); ?></p>
             </td>
         </tr>
         <?php
