@@ -1678,7 +1678,7 @@ var GamutLutPreview = (function() {
     }
 
     function showCart() {
-        if (dom.cartSection) dom.cartSection.style.display = '';
+        if (dom.cartSection) dom.cartSection.style.display = 'block';
     }
 
     function hideCart() {
@@ -1788,7 +1788,7 @@ var GamutLutPreview = (function() {
 
             // Show cart if product_id or product_url exists.
             if (embedState.collection && (embedState.collection.product_id || embedState.collection.product_url) && cartSection) {
-                cartSection.style.display = '';
+                cartSection.style.display = 'block';
             }
 
             // Render image grid.
