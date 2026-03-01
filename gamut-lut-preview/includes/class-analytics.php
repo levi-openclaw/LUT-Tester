@@ -113,13 +113,13 @@ class Gamut_LUT_Analytics {
     }
 
     /**
-     * Add full analytics page under the LUT Preview settings.
+     * Add full analytics page under the LUT Tester menu.
      */
     public function add_analytics_page() {
         add_submenu_page(
-            'options-general.php',
-            __( 'LUT Analytics', 'gamut-lut-preview' ),
-            __( 'LUT Analytics', 'gamut-lut-preview' ),
+            Gamut_LUT_Post_Types::MENU_SLUG,
+            __( 'Analytics', 'gamut-lut-preview' ),
+            __( 'Analytics', 'gamut-lut-preview' ),
             'manage_options',
             'gamut-lut-analytics',
             array( $this, 'render_analytics_page' )
@@ -193,7 +193,7 @@ class Gamut_LUT_Analytics {
             echo '</ol>';
         }
 
-        echo '<p><a href="' . esc_url( admin_url( 'options-general.php?page=gamut-lut-analytics' ) ) . '">' . esc_html__( 'View Full Analytics', 'gamut-lut-preview' ) . '</a></p>';
+        echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=gamut-lut-analytics' ) ) . '">' . esc_html__( 'View Full Analytics', 'gamut-lut-preview' ) . '</a></p>';
     }
 
     /**
@@ -209,7 +209,7 @@ class Gamut_LUT_Analytics {
 
         $table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" );
         if ( ! $table_exists ) {
-            echo '<div class="wrap"><h1>' . esc_html__( 'LUT Analytics', 'gamut-lut-preview' ) . '</h1>';
+            echo '<div class="wrap">';
             echo '<p>' . esc_html__( 'Analytics table not yet created. Deactivate and reactivate the plugin.', 'gamut-lut-preview' ) . '</p></div>';
             return;
         }
@@ -257,10 +257,9 @@ class Gamut_LUT_Analytics {
              ORDER BY total DESC"
         );
 
-        $page_url = admin_url( 'options-general.php?page=gamut-lut-analytics' );
+        $page_url = admin_url( 'admin.php?page=gamut-lut-analytics' );
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e( 'LUT Preview Analytics', 'gamut-lut-preview' ); ?></h1>
 
             <div style="margin: 15px 0;">
                 <?php foreach ( array( '7' => '7 Days', '30' => '30 Days', '90' => '90 Days', 'all' => 'All Time' ) as $key => $label ) : ?>

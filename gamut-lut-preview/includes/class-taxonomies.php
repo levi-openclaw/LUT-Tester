@@ -77,7 +77,7 @@ class Gamut_LUT_Taxonomies {
             'update_item'       => __( 'Update Collection', 'gamut-lut-preview' ),
             'add_new_item'      => __( 'Add New Collection', 'gamut-lut-preview' ),
             'new_item_name'     => __( 'New Collection Name', 'gamut-lut-preview' ),
-            'menu_name'         => __( 'LUT Collections', 'gamut-lut-preview' ),
+            'menu_name'         => __( 'Collections', 'gamut-lut-preview' ),
         );
 
         $args = array(

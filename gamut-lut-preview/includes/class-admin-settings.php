@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Gamut_LUT_Admin_Settings {
 
     const OPTION_GROUP = 'gamut_lut_settings';
-    const PAGE_SLUG    = 'gamut-lut-preview';
+    const PAGE_SLUG    = 'gamut-lut-settings';
 
     public function __construct() {
         add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -20,12 +20,13 @@ class Gamut_LUT_Admin_Settings {
     }
 
     /**
-     * Add settings page under Settings menu.
+     * Add settings page under the LUT Tester menu.
      */
     public function add_settings_page() {
-        add_options_page(
-            __( 'LUT Preview Settings', 'gamut-lut-preview' ),
-            __( 'LUT Preview', 'gamut-lut-preview' ),
+        add_submenu_page(
+            Gamut_LUT_Post_Types::MENU_SLUG,
+            __( 'Settings', 'gamut-lut-preview' ),
+            __( 'Settings', 'gamut-lut-preview' ),
             'manage_options',
             self::PAGE_SLUG,
             array( $this, 'render_settings_page' )
@@ -110,8 +111,6 @@ class Gamut_LUT_Admin_Settings {
         }
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e( 'LUT Preview Settings', 'gamut-lut-preview' ); ?></h1>
-
             <form method="post" action="options.php">
                 <?php
                 settings_fields( self::OPTION_GROUP );
@@ -119,19 +118,6 @@ class Gamut_LUT_Admin_Settings {
                 submit_button();
                 ?>
             </form>
-
-            <hr>
-
-            <h2><?php esc_html_e( 'Shortcode Usage', 'gamut-lut-preview' ); ?></h2>
-            <p><?php esc_html_e( 'Add the following shortcode to any page or post to display the full LUT preview tool:', 'gamut-lut-preview' ); ?></p>
-            <p><code>[gamut_lut_preview]</code></p>
-
-            <h3><?php esc_html_e( 'Collection Embed', 'gamut-lut-preview' ); ?></h3>
-            <p><?php esc_html_e( 'Embed a single collection into a blog post to showcase a specific LUT pack:', 'gamut-lut-preview' ); ?></p>
-            <p><code>[gamut_collection slug="your-collection-slug"]</code></p>
-            <p><?php esc_html_e( 'This displays a compact previewer scoped to one collection, ideal for product pages and blog posts.', 'gamut-lut-preview' ); ?></p>
-
-            <p><?php esc_html_e( 'Both shortcodes only load scripts and styles on pages where they are used.', 'gamut-lut-preview' ); ?></p>
         </div>
         <?php
     }

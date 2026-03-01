@@ -27,6 +27,7 @@
 
     /* Typography */
     --gamut-font-body: 'Soleil', -apple-system, BlinkMacSystemFont, sans-serif;
+    --gamut-font-heading: 'Calluna', Georgia, 'Times New Roman', serif;
     --gamut-font-label: 'Geogrotesque', -apple-system, BlinkMacSystemFont, sans-serif;
 
     /* Spacing */
@@ -74,7 +75,7 @@
 }
 
 .gamut-lut__title {
-    font-family: var(--gamut-font-body);
+    font-family: var(--gamut-font-heading);
     font-size: 22px;
     font-weight: 600;
     line-height: 25px;
