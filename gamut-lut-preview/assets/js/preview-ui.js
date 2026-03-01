@@ -935,6 +935,18 @@ var GamutLutPreview = (function() {
 
         if (state.selectedLut && state.selectedLutB) {
             updateAbComparison();
+        } else if (state.selectedLut && engine.imageLoaded) {
+            // No LUT B yet — show LUT A vs. Original as a useful default.
+            var parsedA = state.cubeCache.get(state.selectedLut.id);
+            if (parsedA) {
+                engine.loadLut(parsedA);
+                engine.setIntensity(state.intensity / 100);
+                var canvasA = engine.captureCanvas();
+                var canvasOriginal = engine.getOriginalCanvas();
+                engine.render();
+                abSlider.updateImages(canvasA, canvasOriginal);
+                abSlider.reset();
+            }
         }
     }
 
@@ -955,7 +967,7 @@ var GamutLutPreview = (function() {
             labelBefore.textContent = state.selectedLut ? state.selectedLut.title : 'LUT A';
         }
         if (labelAfter) {
-            labelAfter.textContent = state.selectedLutB ? state.selectedLutB.title : 'Select LUT B';
+            labelAfter.textContent = state.selectedLutB ? state.selectedLutB.title : 'Original';
         }
     }
 
@@ -964,7 +976,23 @@ var GamutLutPreview = (function() {
      */
     function updateAbComparison() {
         if (!abSlider || !engine || !engine.imageLoaded) return;
-        if (!state.selectedLut || !state.selectedLutB) {
+        if (!state.selectedLut) {
+            updateAbLabels();
+            return;
+        }
+
+        // No LUT B yet — show LUT A vs. Original as a useful default.
+        if (!state.selectedLutB) {
+            var parsedFallback = state.cubeCache.get(state.selectedLut.id);
+            if (parsedFallback) {
+                engine.loadLut(parsedFallback);
+                engine.setIntensity(state.intensity / 100);
+                var canvasLutA = engine.captureCanvas();
+                var canvasOrig = engine.getOriginalCanvas();
+                engine.render();
+                abSlider.updateImages(canvasLutA, canvasOrig);
+                abSlider.reset();
+            }
             updateAbLabels();
             return;
         }
