@@ -84,6 +84,7 @@ class Gamut_LUT_Product_Integration {
         // Build data for the template.
         $collection_slug = $collection_term->slug;
         $collection_name = $collection_term->name;
+        $product_id      = $product->get_id();
         $product_name    = $product->get_name();
         $product_price   = $product->get_price_html();
         $lut_count       = 0;

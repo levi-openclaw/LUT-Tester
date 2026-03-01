@@ -9,6 +9,7 @@
  *
  * @var string $collection_slug The collection slug.
  * @var string $collection_name The collection display name.
+ * @var int    $product_id      The WooCommerce product ID.
  * @var string $product_name    The WooCommerce product name.
  * @var string $product_price   The product price HTML.
  * @var int    $lut_count       Number of LUTs in the collection.
@@ -124,12 +125,10 @@ $instance_id = 'gamut-product-lut-' . sanitize_title( $collection_slug );
                 <div class="gamut-product-lut__price">
                     <?php echo $product_price; // Already escaped by WooCommerce. ?>
                 </div>
-                <div class="gamut-lut__cart">
-                    <button type="button" class="gamut-lut__cart-btn gamut-lut__embed-cart-btn">
-                        <?php esc_html_e( 'ADD TO CART', 'gamut-lut-preview' ); ?>
-                    </button>
-                    <div class="gamut-lut__cart-message"></div>
-                </div>
+                <button type="button" class="gamut-product-lut__cart-btn" data-product-id="<?php echo esc_attr( $product_id ); ?>">
+                    <?php esc_html_e( 'Add to Cart', 'gamut-lut-preview' ); ?>
+                </button>
+                <div class="gamut-product-lut__cart-message"></div>
             </div>
 
         </div>
@@ -137,3 +136,63 @@ $instance_id = 'gamut-product-lut-' . sanitize_title( $collection_slug );
     </div>
 
 </div>
+
+<script>
+(function() {
+    var wrapper = document.getElementById('<?php echo esc_js( $instance_id ); ?>');
+    if (!wrapper) return;
+
+    var btn = wrapper.querySelector('.gamut-product-lut__cart-btn');
+    var msg = wrapper.querySelector('.gamut-product-lut__cart-message');
+    if (!btn) return;
+
+    btn.addEventListener('click', function() {
+        var productId = btn.getAttribute('data-product-id');
+        if (!productId) return;
+
+        btn.disabled = true;
+        btn.textContent = '<?php echo esc_js( __( 'Adding...', 'gamut-lut-preview' ) ); ?>';
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; msg.className = 'gamut-product-lut__cart-message'; }
+
+        var cfg = typeof gamutLutConfig !== 'undefined' ? gamutLutConfig : null;
+        if (!cfg) { btn.disabled = false; btn.textContent = '<?php echo esc_js( __( 'Add to Cart', 'gamut-lut-preview' ) ); ?>'; return; }
+
+        var formData = new FormData();
+        formData.append('action', 'gamut_add_to_cart');
+        formData.append('product_id', productId);
+        formData.append('nonce', cfg.cartNonce);
+
+        fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(response) {
+                btn.disabled = false;
+                btn.textContent = '<?php echo esc_js( __( 'Add to Cart', 'gamut-lut-preview' ) ); ?>';
+                if (msg) {
+                    if (response.success) {
+                        var data = response.data;
+                        if (data.in_cart) {
+                            msg.innerHTML = data.message + ' <a href="' + data.cart_url + '">View Cart</a>';
+                            msg.className = 'gamut-product-lut__cart-message gamut-product-lut__cart-message--info';
+                        } else {
+                            msg.textContent = data.message;
+                            msg.className = 'gamut-product-lut__cart-message gamut-product-lut__cart-message--success';
+                        }
+                    } else {
+                        msg.textContent = (response.data && response.data.message) || 'Error adding to cart.';
+                        msg.className = 'gamut-product-lut__cart-message gamut-product-lut__cart-message--error';
+                    }
+                    msg.style.display = 'block';
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.textContent = '<?php echo esc_js( __( 'Add to Cart', 'gamut-lut-preview' ) ); ?>';
+                if (msg) {
+                    msg.textContent = 'Network error. Please try again.';
+                    msg.className = 'gamut-product-lut__cart-message gamut-product-lut__cart-message--error';
+                    msg.style.display = 'block';
+                }
+            });
+    });
+})();
+</script>
