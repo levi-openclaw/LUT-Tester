@@ -87,19 +87,46 @@ function gamut_lut_og_meta() {
     }
 
     $lut_title = Gamut_LUT_REST_API::clean_lut_title( $lut_post->post_title );
-    $og_title  = sprintf( 'Check out %s from Gamut', $lut_title );
 
-    // Get the sample image URL for og:image.
-    $og_image = '';
+    // Get the collection name for the description.
+    $collection_term = get_term_by( 'slug', $collection_slug, 'gamut_lut_collection' );
+    $collection_name = $collection_term ? $collection_term->name : '';
+
+    $og_title = sprintf( 'Check out %s from Gamut', $lut_title );
+
+    // Get the sample image for og:image.
+    $og_image       = '';
+    $og_image_width = 0;
+    $og_image_height = 0;
+
+    // Try the specific shared image first.
     if ( $image_id ) {
-        $sample_post = get_post( $image_id );
-        if ( $sample_post && 'gamut_sample_image' === $sample_post->post_type ) {
-            $thumb_id = get_post_thumbnail_id( $sample_post->ID );
-            if ( $thumb_id ) {
-                $img_src = wp_get_attachment_image_src( $thumb_id, 'large' );
-                if ( $img_src ) {
-                    $og_image = $img_src[0];
-                }
+        $img_data = gamut_lut_get_sample_image_src( $image_id );
+        if ( $img_data ) {
+            $og_image        = $img_data['url'];
+            $og_image_width  = $img_data['width'];
+            $og_image_height = $img_data['height'];
+        }
+    }
+
+    // Fallback: pick the first available sample image.
+    if ( ! $og_image ) {
+        $fallback = get_posts( array(
+            'post_type'      => 'gamut_sample_image',
+            'post_status'    => 'publish',
+            'posts_per_page' => 1,
+            'orderby'        => 'menu_order title',
+            'order'          => 'ASC',
+            'meta_query'     => array(
+                array( 'key' => '_thumbnail_id', 'compare' => 'EXISTS' ),
+            ),
+        ) );
+        if ( $fallback ) {
+            $img_data = gamut_lut_get_sample_image_src( $fallback[0]->ID );
+            if ( $img_data ) {
+                $og_image        = $img_data['url'];
+                $og_image_width  = $img_data['width'];
+                $og_image_height = $img_data['height'];
             }
         }
     }
@@ -111,7 +138,12 @@ function gamut_lut_og_meta() {
         'gamut_image'      => $image_id ? $image_id : false,
     ), get_permalink() );
 
-    $og_description = sprintf( 'Preview the %s look on Gamut\'s LUT Tester.', $lut_title );
+    // Description includes collection name when available.
+    if ( $collection_name ) {
+        $og_description = sprintf( 'Preview the %s look from the %s collection on Gamut.', $lut_title, $collection_name );
+    } else {
+        $og_description = sprintf( 'Preview the %s look on Gamut\'s LUT Tester.', $lut_title );
+    }
 
     echo '<meta property="og:title" content="' . esc_attr( $og_title ) . '" />' . "\n";
     echo '<meta property="og:description" content="' . esc_attr( $og_description ) . '" />' . "\n";
@@ -121,7 +153,13 @@ function gamut_lut_og_meta() {
 
     if ( $og_image ) {
         echo '<meta property="og:image" content="' . esc_url( $og_image ) . '" />' . "\n";
+        if ( $og_image_width && $og_image_height ) {
+            echo '<meta property="og:image:width" content="' . intval( $og_image_width ) . '" />' . "\n";
+            echo '<meta property="og:image:height" content="' . intval( $og_image_height ) . '" />' . "\n";
+        }
         echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
+    } else {
+        echo '<meta name="twitter:card" content="summary" />' . "\n";
     }
 
     echo '<meta name="twitter:title" content="' . esc_attr( $og_title ) . '" />' . "\n";
@@ -130,6 +168,35 @@ function gamut_lut_og_meta() {
     if ( $og_image ) {
         echo '<meta name="twitter:image" content="' . esc_url( $og_image ) . '" />' . "\n";
     }
+}
+
+/**
+ * Get the image source data for a sample image post.
+ *
+ * @param int $post_id The gamut_sample_image post ID.
+ * @return array|null Array with url, width, height or null.
+ */
+function gamut_lut_get_sample_image_src( $post_id ) {
+    $post = get_post( $post_id );
+    if ( ! $post || 'gamut_sample_image' !== $post->post_type ) {
+        return null;
+    }
+
+    $thumb_id = get_post_thumbnail_id( $post->ID );
+    if ( ! $thumb_id ) {
+        return null;
+    }
+
+    $img_src = wp_get_attachment_image_src( $thumb_id, 'large' );
+    if ( ! $img_src ) {
+        return null;
+    }
+
+    return array(
+        'url'    => $img_src[0],
+        'width'  => $img_src[1],
+        'height' => $img_src[2],
+    );
 }
 add_action( 'wp_head', 'gamut_lut_og_meta', 5 );
 

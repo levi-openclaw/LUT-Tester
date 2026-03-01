@@ -144,7 +144,38 @@ $instance_id = 'gamut-product-lut-' . sanitize_title( $collection_slug );
 
     var btn = wrapper.querySelector('.gamut-product-lut__cart-btn');
     var msg = wrapper.querySelector('.gamut-product-lut__cart-message');
+    var embed = wrapper.querySelector('.gamut-lut--embed');
     if (!btn) return;
+
+    // Get the currently selected LUT name from the embed dropdown.
+    function getSelectedLutTitle() {
+        if (!embed) return '';
+        var sel = embed.querySelector('.gamut-lut__embed-lut-select');
+        if (!sel || !sel.value) return '';
+        var opt = sel.options[sel.selectedIndex];
+        return opt ? opt.textContent : '';
+    }
+
+    // Track analytics event (fire-and-forget).
+    function trackCartAdd(productId, lutTitle) {
+        var cfg = typeof gamutLutConfig !== 'undefined' ? gamutLutConfig : null;
+        if (!cfg) return;
+
+        var data = new FormData();
+        data.append('action', 'gamut_track_preview');
+        data.append('nonce', cfg.cartNonce);
+        data.append('event_type', 'cart_add');
+        data.append('object_id', productId);
+        data.append('title', lutTitle || '<?php echo esc_js( $collection_name ); ?>');
+        data.append('collection', '<?php echo esc_js( $collection_slug ); ?>');
+        data.append('session_id', '');
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(cfg.ajaxUrl, data);
+        } else {
+            fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: data, keepalive: true }).catch(function() {});
+        }
+    }
 
     btn.addEventListener('click', function() {
         var productId = btn.getAttribute('data-product-id');
@@ -161,6 +192,10 @@ $instance_id = 'gamut-product-lut-' . sanitize_title( $collection_slug );
         formData.append('action', 'gamut_add_to_cart');
         formData.append('product_id', productId);
         formData.append('nonce', cfg.cartNonce);
+
+        // Track which LUT was selected at time of add-to-cart.
+        var lutTitle = getSelectedLutTitle();
+        trackCartAdd(productId, lutTitle);
 
         fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
             .then(function(r) { return r.json(); })

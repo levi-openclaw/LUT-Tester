@@ -65,7 +65,7 @@ class Gamut_LUT_Analytics {
         $collection = isset( $_POST['collection'] ) ? sanitize_text_field( $_POST['collection'] ) : '';
         $session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( $_POST['session_id'] ) : '';
 
-        $valid_events = array( 'lut_preview', 'image_preview', 'share_click', 'cart_click' );
+        $valid_events = array( 'lut_preview', 'image_preview', 'share_click', 'cart_click', 'cart_add' );
         if ( ! in_array( $event_type, $valid_events, true ) || ! $object_id ) {
             wp_send_json_error( array( 'message' => 'Invalid event.' ) );
         }
@@ -172,8 +172,14 @@ class Gamut_LUT_Analytics {
              AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)"
         );
 
+        $total_cart_adds = $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$table_name}
+             WHERE event_type = 'cart_add'
+             AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        );
+
         echo '<p><strong>' . esc_html__( 'Last 30 Days', 'gamut-lut-preview' ) . '</strong></p>';
-        echo '<p>' . sprintf( esc_html__( 'Total LUT Previews: %s | Shares: %s', 'gamut-lut-preview' ), '<strong>' . intval( $total_previews ) . '</strong>', '<strong>' . intval( $total_shares ) . '</strong>' ) . '</p>';
+        echo '<p>' . sprintf( esc_html__( 'LUT Previews: %s | Shares: %s | Add to Carts: %s', 'gamut-lut-preview' ), '<strong>' . intval( $total_previews ) . '</strong>', '<strong>' . intval( $total_shares ) . '</strong>', '<strong>' . intval( $total_cart_adds ) . '</strong>' ) . '</p>';
 
         if ( $top_luts ) {
             echo '<h4>' . esc_html__( 'Top LUTs', 'gamut-lut-preview' ) . '</h4>';
@@ -246,6 +252,15 @@ class Gamut_LUT_Analytics {
              WHERE event_type = 'lut_preview' AND collection_slug != '' {$date_clause}
              GROUP BY collection_slug
              ORDER BY view_count DESC
+             LIMIT 10"
+        );
+
+        $top_cart_luts = $wpdb->get_results(
+            "SELECT object_title, collection_slug, COUNT(*) as add_count
+             FROM {$table_name}
+             WHERE event_type = 'cart_add' AND object_title != '' {$date_clause}
+             GROUP BY object_title, collection_slug
+             ORDER BY add_count DESC
              LIMIT 10"
         );
 
@@ -333,6 +348,26 @@ class Gamut_LUT_Analytics {
                             <?php endforeach; ?>
                         <?php else : ?>
                             <tr><td colspan="2"><?php esc_html_e( 'No data yet.', 'gamut-lut-preview' ); ?></td></tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="flex: 1; min-width: 300px;">
+                    <h2><?php esc_html_e( 'LUTs at Add to Cart', 'gamut-lut-preview' ); ?></h2>
+                    <table class="widefat striped">
+                        <thead><tr><th><?php esc_html_e( 'LUT Previewed', 'gamut-lut-preview' ); ?></th><th><?php esc_html_e( 'Collection', 'gamut-lut-preview' ); ?></th><th><?php esc_html_e( 'Adds', 'gamut-lut-preview' ); ?></th></tr></thead>
+                        <tbody>
+                        <?php if ( $top_cart_luts ) : ?>
+                            <?php foreach ( $top_cart_luts as $row ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $row->object_title ); ?></td>
+                                <td style="text-transform: capitalize;"><?php echo esc_html( $row->collection_slug ); ?></td>
+                                <td><?php echo intval( $row->add_count ); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php else : ?>
+                            <tr><td colspan="3"><?php esc_html_e( 'No data yet.', 'gamut-lut-preview' ); ?></td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>

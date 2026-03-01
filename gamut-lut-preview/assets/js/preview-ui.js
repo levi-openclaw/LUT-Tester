@@ -1427,8 +1427,8 @@ var GamutLutPreview = (function() {
             showCartMessage('Network error. Please try again.', 'error');
         });
 
-        // Track analytics.
-        trackEvent('cart_click', state.selectedCollection.product_id, state.selectedCollection.name, state.selectedCollection.slug);
+        // Track analytics — record both the product and which LUT was being previewed.
+        trackEvent('cart_add', state.selectedCollection.product_id, state.selectedLut ? state.selectedLut.title : state.selectedCollection.name, state.selectedCollection.slug);
     }
 
     // ======================================================
