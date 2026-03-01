@@ -226,46 +226,66 @@ var GamutLutPreview = (function() {
     // ======================================================
 
     /**
-     * Fetch images and collections from the REST API in parallel.
+     * Fetch images and collections from the REST API independently
+     * for progressive rendering (don't wait for both to finish).
      */
     function fetchData() {
         setLoading(true);
 
         var headers = { 'X-WP-Nonce': config.nonce };
+        var imagesReady = false;
+        var collectionsReady = false;
 
-        Promise.all([
-            fetch(config.restUrl + '/images', { credentials: 'same-origin', headers: headers })
-                .then(function(r) { return r.json(); }),
-            fetch(config.restUrl + '/collections', { credentials: 'same-origin', headers: headers })
-                .then(function(r) { return r.json(); })
-        ])
-        .then(function(results) {
-            var imagesData = results[0];
-            var collectionsData = results[1];
+        // Fetch images — render grid as soon as available.
+        fetch(config.restUrl + '/images', { credentials: 'same-origin', headers: headers })
+            .then(function(r) { return r.json(); })
+            .then(function(imagesData) {
+                state.images = imagesData.images || [];
+                state.categories = imagesData.categories || [];
 
-            state.images = imagesData.images || [];
-            state.categories = imagesData.categories || [];
-            state.collections = collectionsData.collections || [];
+                renderImageGrid();
+                renderCategoryFilter();
+                updateFavoritesCount();
+                imagesReady = true;
 
-            renderImageGrid();
-            renderCategoryFilter();
-            renderCollectionDropdown();
-            updateFavoritesCount();
+                // Auto-load first image immediately (don't wait for collections).
+                if (state.images.length > 0 && !state.selectedImage) {
+                    selectImageById(state.images[0].id);
+                }
+
+                if (collectionsReady) onAllDataReady();
+            })
+            .catch(function(err) {
+                console.error('GamutLutPreview: Failed to fetch images', err);
+            });
+
+        // Fetch collections — render dropdowns as soon as available.
+        fetch(config.restUrl + '/collections', { credentials: 'same-origin', headers: headers })
+            .then(function(r) { return r.json(); })
+            .then(function(collectionsData) {
+                state.collections = collectionsData.collections || [];
+
+                renderCollectionDropdown();
+                collectionsReady = true;
+
+                if (imagesReady) onAllDataReady();
+            })
+            .catch(function(err) {
+                console.error('GamutLutPreview: Failed to fetch collections', err);
+                if (dom.collectionSelect) {
+                    dom.collectionSelect.innerHTML = '<option value="">Unable to load</option>';
+                }
+            });
+
+        // Called once both have finished — apply share state.
+        function onAllDataReady() {
             setLoading(false);
-
-            // Apply deep-link state from URL if present.
-            applyShareState();
-
-            // Auto-load the first image if no share link selected one.
-            if (state.images.length > 0 && !state.selectedImage) {
-                selectImageById(state.images[0].id);
+            try {
+                applyShareState();
+            } catch (e) {
+                console.error('GamutLutPreview: Error applying share state', e);
             }
-        })
-        .catch(function(err) {
-            setLoading(false);
-            showFetchError();
-            console.error('GamutLutPreview: Failed to fetch data', err);
-        });
+        }
     }
 
     /**
