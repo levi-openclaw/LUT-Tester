@@ -567,6 +567,11 @@ var GamutLutPreview = (function() {
             } while (state.selectedLut && pick.lut.id === state.selectedLut.id && allLuts.length > 1);
         }
 
+        // Reset compare mode so the user sees the full canvas with the new LUT.
+        if (state.compareMode !== 'none') {
+            setCompareMode('none');
+        }
+
         // Select the collection, then the LUT.
         selectCollectionBySlug(pick.collection.slug);
 
@@ -716,7 +721,7 @@ var GamutLutPreview = (function() {
 
         var pct = value;
         dom.intensitySlider.style.background =
-            'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + pct + '%, var(--gamut-slider-track) ' + pct + '%, var(--gamut-slider-track) 100%)';
+            'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + pct + '%, var(--gamut-border) ' + pct + '%, var(--gamut-border) 100%)';
 
         if (engine) {
             engine.setIntensity(value / 100);
@@ -1852,7 +1857,7 @@ var GamutLutPreview = (function() {
                 embedState.intensity = val;
                 if (intensityValue) intensityValue.textContent = val + '%';
                 intensitySlider.style.background =
-                    'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + val + '%, var(--gamut-slider-track) ' + val + '%, var(--gamut-slider-track) 100%)';
+                    'linear-gradient(to right, var(--gamut-accent) 0%, var(--gamut-accent) ' + val + '%, var(--gamut-border) ' + val + '%, var(--gamut-border) 100%)';
                 if (embedEngine) {
                     embedEngine.setIntensity(val / 100);
                     embedEngine.render();

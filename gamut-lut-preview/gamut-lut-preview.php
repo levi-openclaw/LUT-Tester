@@ -3,7 +3,7 @@
  * Plugin Name: Gamut LUT Preview
  * Plugin URI:  https://gamut.io
  * Description: Client-side WebGL LUT preview tool. Users select sample images, choose a LUT collection and individual LUT, and see instant before/after previews with intensity control.
- * Version:     1.3.0
+ * Version:     1.4.0
  * Author:      Gamut
  * Author URI:  https://gamut.io
  * Text Domain: gamut-lut-preview
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'GAMUT_LUT_VERSION', '1.3.0' );
+define( 'GAMUT_LUT_VERSION', '1.4.0' );
 define( 'GAMUT_LUT_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GAMUT_LUT_URL', plugin_dir_url( __FILE__ ) );
 
