@@ -233,7 +233,6 @@ class Gamut_LUT_Bulk_Upload {
             'nonce'            => wp_create_nonce( 'gamut_admin_nonce' ),
             'confirmDelete'    => __( 'Delete this LUT? This cannot be undone.', 'gamut-lut-preview' ),
             'saving'           => __( 'Saving...', 'gamut-lut-preview' ),
-            'saved'            => __( 'Saved', 'gamut-lut-preview' ),
             'uploading'        => __( 'Creating LUTs...', 'gamut-lut-preview' ),
             'uploadingImages'  => __( 'Creating images...', 'gamut-lut-preview' ),
         ) );
@@ -322,7 +321,7 @@ class Gamut_LUT_Bulk_Upload {
             if ( $file_path && file_exists( $file_path ) ) {
                 $file_size = filesize( $file_path );
                 update_post_meta( $post_id, '_gamut_cube_file_size', $file_size );
-                $lut_size = $this->parse_lut_size( $file_path );
+                $lut_size = Gamut_LUT_Utils::parse_lut_size( $file_path );
                 if ( $lut_size ) {
                     update_post_meta( $post_id, '_gamut_lut_size', $lut_size );
                 }
@@ -498,25 +497,4 @@ class Gamut_LUT_Bulk_Upload {
         return $name;
     }
 
-    private function parse_lut_size( $file_path ) {
-        $handle = fopen( $file_path, 'r' );
-        if ( ! $handle ) {
-            return false;
-        }
-
-        $lines_read = 0;
-        $lut_size   = false;
-
-        while ( ( $line = fgets( $handle ) ) !== false && $lines_read < 50 ) {
-            $line = trim( $line );
-            if ( preg_match( '/^LUT_3D_SIZE\s+(\d+)/i', $line, $matches ) ) {
-                $lut_size = absint( $matches[1] );
-                break;
-            }
-            $lines_read++;
-        }
-
-        fclose( $handle );
-        return $lut_size;
-    }
 }

@@ -109,7 +109,7 @@ class Gamut_LUT_Meta_Boxes {
                 $file_path = get_attached_file( $file_id );
                 if ( $file_path && file_exists( $file_path ) ) {
                     update_post_meta( $post_id, '_gamut_cube_file_size', filesize( $file_path ) );
-                    $lut_size = $this->parse_lut_size( $file_path );
+                    $lut_size = Gamut_LUT_Utils::parse_lut_size( $file_path );
                     if ( $lut_size ) {
                         update_post_meta( $post_id, '_gamut_lut_size', $lut_size );
                     }
@@ -121,34 +121,6 @@ class Gamut_LUT_Meta_Boxes {
             delete_post_meta( $post_id, '_gamut_cube_file_size' );
             delete_post_meta( $post_id, '_gamut_lut_size' );
         }
-    }
-
-    /**
-     * Parse LUT_3D_SIZE from a .cube file header.
-     *
-     * @param string $file_path Absolute path to the .cube file.
-     * @return int|false LUT grid size or false if not found.
-     */
-    private function parse_lut_size( $file_path ) {
-        $handle = fopen( $file_path, 'r' );
-        if ( ! $handle ) {
-            return false;
-        }
-
-        $lines_read = 0;
-        $lut_size   = false;
-
-        while ( ( $line = fgets( $handle ) ) !== false && $lines_read < 50 ) {
-            $line = trim( $line );
-            if ( preg_match( '/^LUT_3D_SIZE\s+(\d+)/i', $line, $matches ) ) {
-                $lut_size = absint( $matches[1] );
-                break;
-            }
-            $lines_read++;
-        }
-
-        fclose( $handle );
-        return $lut_size;
     }
 
     /**

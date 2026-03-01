@@ -1,106 +1,13 @@
 /**
  * Gamut .cube File Parser
  *
- * Parses .cube LUT text files into Float32Array data for WebGL,
- * and parses the binary format served by the protected REST endpoint.
+ * Parses the binary LUT format served by the protected REST endpoint
+ * into Float32Array data for WebGL.
  *
  * @package Gamut_LUT_Preview
  */
 var GamutCubeParser = (function() {
     'use strict';
-
-    /**
-     * Parse a .cube text file into structured LUT data.
-     *
-     * @param {string} textContent - Raw .cube file text.
-     * @returns {{ size: number, data: Float32Array, domainMin: number[], domainMax: number[] }}
-     */
-    function parse(textContent) {
-        var lines = textContent.split('\n');
-        var size = 0;
-        var domainMin = [0.0, 0.0, 0.0];
-        var domainMax = [1.0, 1.0, 1.0];
-        var rgbData = [];
-        var i, line, parts;
-
-        for (i = 0; i < lines.length; i++) {
-            line = lines[i].trim();
-
-            // Skip empty lines and comments.
-            if (line === '' || line.charAt(0) === '#') {
-                continue;
-            }
-
-            // Parse LUT_3D_SIZE header.
-            if (line.indexOf('LUT_3D_SIZE') === 0) {
-                parts = line.split(/\s+/);
-                if (parts.length >= 2) {
-                    size = parseInt(parts[1], 10);
-                }
-                continue;
-            }
-
-            // Parse DOMAIN_MIN header.
-            if (line.indexOf('DOMAIN_MIN') === 0) {
-                parts = line.split(/\s+/);
-                if (parts.length >= 4) {
-                    domainMin = [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])];
-                }
-                continue;
-            }
-
-            // Parse DOMAIN_MAX header.
-            if (line.indexOf('DOMAIN_MAX') === 0) {
-                parts = line.split(/\s+/);
-                if (parts.length >= 4) {
-                    domainMax = [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])];
-                }
-                continue;
-            }
-
-            // Skip other header lines (TITLE, etc.).
-            if (/^[A-Z_]/.test(line)) {
-                continue;
-            }
-
-            // Parse data line: "R G B" floats.
-            parts = line.split(/\s+/);
-            if (parts.length >= 3) {
-                rgbData.push(parseFloat(parts[0]));
-                rgbData.push(parseFloat(parts[1]));
-                rgbData.push(parseFloat(parts[2]));
-            }
-        }
-
-        if (!size) {
-            throw new Error('GamutCubeParser: LUT_3D_SIZE not found in .cube file');
-        }
-
-        var expected = size * size * size;
-        var actual = rgbData.length / 3;
-        if (actual !== expected) {
-            throw new Error(
-                'GamutCubeParser: Data count mismatch. Expected ' + expected +
-                ' points, got ' + actual
-            );
-        }
-
-        // Convert RGB triplets to RGBA Float32Array (WebGL requires 4 channels).
-        var rgbaData = new Float32Array(expected * 4);
-        for (i = 0; i < expected; i++) {
-            rgbaData[i * 4]     = rgbData[i * 3];     // R
-            rgbaData[i * 4 + 1] = rgbData[i * 3 + 1]; // G
-            rgbaData[i * 4 + 2] = rgbData[i * 3 + 2]; // B
-            rgbaData[i * 4 + 3] = 1.0;                 // A
-        }
-
-        return {
-            size: size,
-            data: rgbaData,
-            domainMin: domainMin,
-            domainMax: domainMax
-        };
-    }
 
     /**
      * Parse the binary format from the protected REST endpoint.
@@ -161,7 +68,6 @@ var GamutCubeParser = (function() {
 
     // Public API.
     return {
-        parse: parse,
         parseBinary: parseBinary,
         fetchAndParse: fetchAndParse
     };

@@ -497,35 +497,6 @@ var GamutLutEngine = (function() {
     };
 
     /**
-     * Get a canvas with the fully graded image (intensity = 1.0).
-     *
-     * @returns {HTMLCanvasElement}
-     */
-    Engine.prototype.getGradedCanvas = function() {
-        var offscreen = document.createElement('canvas');
-        offscreen.width = this.canvas.width;
-        offscreen.height = this.canvas.height;
-
-        if (!this.imageLoaded || !this.lutLoaded) {
-            return offscreen;
-        }
-
-        // Save current intensity, render at full, restore.
-        var savedIntensity = this.intensity;
-        this.setIntensity(1.0);
-        this.render();
-
-        var ctx = offscreen.getContext('2d');
-        ctx.drawImage(this.canvas, 0, 0);
-
-        // Restore previous intensity and re-render.
-        this.setIntensity(savedIntensity);
-        this.render();
-
-        return offscreen;
-    };
-
-    /**
      * Get a canvas snapshot at the current intensity setting.
      *
      * @returns {HTMLCanvasElement}

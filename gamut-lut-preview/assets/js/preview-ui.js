@@ -40,9 +40,7 @@ var GamutLutPreview = (function() {
         favorites: [],
         isLoading: false,
         cubeCache: new Map(),
-        sessionId: '',
-        gestureState: null,
-        favoriteSyncPending: false
+        sessionId: ''
     };
 
     // Engine and slider instances.
@@ -1335,8 +1333,6 @@ var GamutLutPreview = (function() {
             isSwiping: false,
             startTime: 0
         };
-
-        state.gestureState = touchState;
 
         target.addEventListener('touchstart', function(e) {
             if (e.touches.length === 2) {

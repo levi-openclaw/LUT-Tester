@@ -32,6 +32,7 @@ add_filter( 'upload_mimes', 'gamut_lut_allow_cube_upload' );
 /**
  * Include all class files.
  */
+require_once GAMUT_LUT_PATH . 'includes/class-utils.php';
 require_once GAMUT_LUT_PATH . 'includes/class-post-types.php';
 require_once GAMUT_LUT_PATH . 'includes/class-taxonomies.php';
 require_once GAMUT_LUT_PATH . 'includes/class-meta-boxes.php';

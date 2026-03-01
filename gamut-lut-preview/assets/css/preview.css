@@ -556,11 +556,6 @@
     color: var(--gamut-text-muted);
 }
 
-.gamut-lut__cart-message--info a {
-    color: var(--gamut-accent);
-    text-decoration: underline;
-}
-
 .gamut-lut__cart-message--error {
     color: #e74c3c;
 }
