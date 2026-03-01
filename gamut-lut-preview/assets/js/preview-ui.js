@@ -118,9 +118,13 @@ var GamutLutPreview = (function() {
         dom.compareGroup = dom.root.querySelector('.gamut-lut__control-group--compare');
         dom.segmented = dom.root.querySelector('.gamut-lut__segmented');
 
-        // LUT B dropdown.
+        // LUT B dropdowns (collection + LUT).
+        dom.collectionSelectB = document.getElementById('gamut-lut-collection-b');
         dom.lutSelectB = document.getElementById('gamut-lut-select-b');
         dom.lutSelectBGroup = dom.root.querySelector('.gamut-lut__control-group--lut-b');
+
+        // Randomize button.
+        dom.randomizeBtn = document.getElementById('gamut-lut-randomize');
 
         // Comparison slider.
         dom.comparison = dom.root.querySelector('.gamut-lut__comparison');
@@ -182,8 +186,14 @@ var GamutLutPreview = (function() {
         if (dom.favoritesToggle) {
             dom.favoritesToggle.addEventListener('click', onFavoritesToggle);
         }
+        if (dom.collectionSelectB) {
+            dom.collectionSelectB.addEventListener('change', onCollectionBChange);
+        }
         if (dom.lutSelectB) {
             dom.lutSelectB.addEventListener('change', onLutBChange);
+        }
+        if (dom.randomizeBtn) {
+            dom.randomizeBtn.addEventListener('click', onRandomize);
         }
         if (dom.shareBtn) {
             dom.shareBtn.addEventListener('click', onShareClick);
@@ -245,6 +255,11 @@ var GamutLutPreview = (function() {
 
             // Apply deep-link state from URL if present.
             applyShareState();
+
+            // Auto-load the first image if no share link selected one.
+            if (state.images.length > 0 && !state.selectedImage) {
+                selectImageById(state.images[0].id);
+            }
         })
         .catch(function(err) {
             setLoading(false);
@@ -318,7 +333,7 @@ var GamutLutPreview = (function() {
     }
 
     /**
-     * Render the collection dropdown.
+     * Render the collection dropdown (and B collection dropdown).
      */
     function renderCollectionDropdown() {
         if (!dom.collectionSelect) return;
@@ -329,6 +344,11 @@ var GamutLutPreview = (function() {
         });
 
         dom.collectionSelect.innerHTML = html;
+
+        // Also populate the B side collection dropdown.
+        if (dom.collectionSelectB) {
+            dom.collectionSelectB.innerHTML = html;
+        }
     }
 
     // ======================================================
@@ -473,9 +493,9 @@ var GamutLutPreview = (function() {
         });
         dom.lutSelect.innerHTML = html;
 
-        // Populate LUT B dropdown too.
+        // Reset LUT B dropdown (user must pick from B collection selector).
         if (dom.lutSelectB) {
-            dom.lutSelectB.innerHTML = html;
+            dom.lutSelectB.innerHTML = '<option value="">Select Look</option>';
         }
 
         // Show LUT select group, hide the rest.
@@ -497,6 +517,48 @@ var GamutLutPreview = (function() {
 
         // Preload all .cube files for this collection in the background.
         preloadCollection(col);
+    }
+
+    /**
+     * Randomize: pick a random Look from any collection.
+     */
+    function onRandomize() {
+        if (!state.collections.length) return;
+
+        // Build flat list of all LUTs with their collection.
+        var allLuts = [];
+        state.collections.forEach(function(col) {
+            if (col.luts && col.luts.length) {
+                col.luts.forEach(function(lut) {
+                    allLuts.push({ lut: lut, collection: col });
+                });
+            }
+        });
+
+        if (!allLuts.length) return;
+
+        // Pick a random one (avoid picking the same LUT again).
+        var pick;
+        if (allLuts.length === 1) {
+            pick = allLuts[0];
+        } else {
+            do {
+                pick = allLuts[Math.floor(Math.random() * allLuts.length)];
+            } while (state.selectedLut && pick.lut.id === state.selectedLut.id && allLuts.length > 1);
+        }
+
+        // Select the collection, then the LUT.
+        selectCollectionBySlug(pick.collection.slug);
+
+        // Auto-load first image if none selected.
+        if (!state.selectedImage && state.images.length > 0) {
+            selectImageById(state.images[0].id);
+        }
+
+        // Select the LUT (slight delay for collection preload to start).
+        setTimeout(function() {
+            selectLutById(pick.lut.id);
+        }, 50);
     }
 
     /**
@@ -733,30 +795,73 @@ var GamutLutPreview = (function() {
     // ======================================================
 
     /**
-     * Handle second LUT (B) dropdown change.
+     * Handle B-side collection dropdown change.
+     */
+    function onCollectionBChange() {
+        var slug = dom.collectionSelectB.value;
+        state.selectedLutB = null;
+
+        if (!slug || !dom.lutSelectB) {
+            dom.lutSelectB.innerHTML = '<option value="">Select Look</option>';
+            return;
+        }
+
+        // Find the selected B collection.
+        var col = null;
+        for (var i = 0; i < state.collections.length; i++) {
+            if (state.collections[i].slug === slug) {
+                col = state.collections[i];
+                break;
+            }
+        }
+        if (!col) return;
+
+        // Populate the B LUT dropdown with this collection's Looks.
+        var html = '<option value="">Select Look</option>';
+        col.luts.forEach(function(lut) {
+            html += '<option value="' + lut.id + '">' + escapeHtml(lut.title) + '</option>';
+        });
+        dom.lutSelectB.innerHTML = html;
+
+        // Preload this collection's LUTs in background.
+        preloadCollection(col);
+    }
+
+    /**
+     * Handle second LUT (B) dropdown change — cross-collection.
      */
     function onLutBChange() {
         var lutId = parseInt(dom.lutSelectB.value, 10);
 
-        if (!lutId || !state.selectedCollection) {
+        if (!lutId) {
             state.selectedLutB = null;
             return;
         }
 
-        var lut = null;
-        var luts = state.selectedCollection.luts;
-        for (var i = 0; i < luts.length; i++) {
-            if (luts[i].id === lutId) {
-                lut = luts[i];
-                break;
-            }
-        }
+        // Find the LUT across the selected B collection.
+        var bSlug = dom.collectionSelectB ? dom.collectionSelectB.value : '';
+        var lut = findLutById(lutId, bSlug);
         if (!lut) return;
 
         state.selectedLutB = lut;
 
         // Load and render B side.
         loadLutB(lut);
+    }
+
+    /**
+     * Find a LUT by ID, optionally within a specific collection.
+     */
+    function findLutById(lutId, collectionSlug) {
+        var collections = state.collections;
+        for (var i = 0; i < collections.length; i++) {
+            if (collectionSlug && collections[i].slug !== collectionSlug) continue;
+            var luts = collections[i].luts;
+            for (var j = 0; j < luts.length; j++) {
+                if (luts[j].id === lutId) return luts[j];
+            }
+        }
+        return null;
     }
 
     /**

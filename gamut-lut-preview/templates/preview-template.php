@@ -92,12 +92,19 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
 
             <!-- LUT Collection Selector -->
             <div class="gamut-lut__control-group gamut-lut__control-group--collection">
-                <label class="gamut-lut__label" for="gamut-lut-collection">
-                    <?php esc_html_e( 'LUT Collection', 'gamut-lut-preview' ); ?>
-                </label>
-                <select id="gamut-lut-collection" class="gamut-lut__select">
-                    <option value=""><?php esc_html_e( 'Loading...', 'gamut-lut-preview' ); ?></option>
-                </select>
+                <div class="gamut-lut__collection-row">
+                    <div class="gamut-lut__collection-select-wrap">
+                        <label class="gamut-lut__label" for="gamut-lut-collection">
+                            <?php esc_html_e( 'LUT Collection', 'gamut-lut-preview' ); ?>
+                        </label>
+                        <select id="gamut-lut-collection" class="gamut-lut__select">
+                            <option value=""><?php esc_html_e( 'Loading...', 'gamut-lut-preview' ); ?></option>
+                        </select>
+                    </div>
+                    <button type="button" id="gamut-lut-randomize" class="gamut-lut__randomize-btn" aria-label="<?php esc_attr_e( 'Random Look', 'gamut-lut-preview' ); ?>">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Individual LUT Selector (hidden until collection chosen) -->
@@ -147,11 +154,14 @@ $images_description = get_option( 'gamut_lut_images_description', '' );
 
             <!-- Second LUT selector for A/B mode (hidden until A/B enabled) -->
             <div class="gamut-lut__control-group gamut-lut__control-group--lut-b">
-                <label class="gamut-lut__label" for="gamut-lut-select-b">
+                <label class="gamut-lut__label" for="gamut-lut-collection-b">
                     <?php esc_html_e( 'Compare With', 'gamut-lut-preview' ); ?>
                 </label>
-                <select id="gamut-lut-select-b" class="gamut-lut__select">
-                    <option value=""><?php esc_html_e( 'Select LUT', 'gamut-lut-preview' ); ?></option>
+                <select id="gamut-lut-collection-b" class="gamut-lut__select">
+                    <option value=""><?php esc_html_e( 'Select Collection', 'gamut-lut-preview' ); ?></option>
+                </select>
+                <select id="gamut-lut-select-b" class="gamut-lut__select" style="margin-top: 8px;">
+                    <option value=""><?php esc_html_e( 'Select Look', 'gamut-lut-preview' ); ?></option>
                 </select>
             </div>
 

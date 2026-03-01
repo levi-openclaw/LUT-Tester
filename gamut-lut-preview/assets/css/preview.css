@@ -31,9 +31,9 @@
     --gamut-font-label: 'Geogrotesque', -apple-system, BlinkMacSystemFont, sans-serif;
 
     /* Spacing */
-    --gamut-gap: 30px;
-    --gamut-gap-sm: 10px;
-    --gamut-section-spacing: 30px;
+    --gamut-gap: 36px;
+    --gamut-gap-sm: 8px;
+    --gamut-section-spacing: 40px;
 
     /* Sizing */
     --gamut-max-width: 1320px;
@@ -76,11 +76,12 @@
 
 .gamut-lut__title {
     font-family: var(--gamut-font-heading);
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 600;
     line-height: 1.3;
     color: var(--gamut-text);
     margin: 0 0 12px 0;
+    letter-spacing: 0.01em;
 }
 
 .gamut-lut__description {
@@ -111,7 +112,7 @@
     width: var(--gamut-sidebar-width);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
 }
 
 /* ========================================
@@ -146,6 +147,52 @@
 }
 
 /* ========================================
+   Collection Row (dropdown + randomize)
+   ======================================== */
+.gamut-lut__collection-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.gamut-lut__collection-select-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gamut-lut__randomize-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gamut-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--gamut-border-radius);
+    color: var(--gamut-text-muted);
+    cursor: pointer;
+    transition: border-color var(--gamut-transition), color var(--gamut-transition), background-color var(--gamut-transition);
+}
+
+.gamut-lut__randomize-btn:hover {
+    border-color: var(--gamut-accent);
+    color: var(--gamut-accent);
+    background-color: var(--gamut-bg-input-hover);
+}
+
+.gamut-lut__randomize-btn:active {
+    transform: scale(0.95);
+}
+
+.gamut-lut__randomize-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ========================================
    Control Groups
    ======================================== */
 .gamut-lut__control-group {
@@ -175,11 +222,12 @@
 
 .gamut-lut__label {
     font-family: var(--gamut-font-label);
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 17px;
-    color: var(--gamut-text);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--gamut-text-muted);
     text-transform: uppercase;
+    letter-spacing: 1.2px;
 }
 
 /* ========================================
@@ -353,14 +401,15 @@
 
 .gamut-lut__segment {
     flex: 1;
-    padding: 8px 6px;
+    padding: 9px 6px;
     background: transparent;
     border: none;
     color: var(--gamut-text-muted);
-    font-family: var(--gamut-font-body);
-    font-size: 11px;
+    font-family: var(--gamut-font-label);
+    font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     cursor: pointer;
     transition: background-color var(--gamut-transition), color var(--gamut-transition);
     text-align: center;
@@ -386,15 +435,17 @@
    ======================================== */
 .gamut-lut__lut-toast {
     position: absolute;
-    bottom: 16px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(8px);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.95);
     font-family: var(--gamut-font-label);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    padding: 6px 16px;
+    letter-spacing: 0.5px;
+    padding: 8px 20px;
     border-radius: 4px;
     pointer-events: none;
     opacity: 0;
@@ -465,9 +516,9 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 3px solid #fff;
-    opacity: 0.7;
-    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
 }
 
 /* Handle arrows via inline SVG */
@@ -486,15 +537,16 @@
 
 .gamut-lut__comparison-label {
     position: absolute;
-    top: 12px;
+    top: 16px;
     z-index: 3;
     font-family: var(--gamut-font-label);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 4px 10px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.45);
+    padding: 5px 12px;
     border-radius: 2px;
     pointer-events: none;
 }
@@ -517,15 +569,15 @@
 
 .gamut-lut__cart-btn {
     width: 100%;
-    padding: 13.2px 20px;
+    padding: 14px 20px;
     background-color: var(--gamut-accent);
     border: none;
     border-radius: var(--gamut-border-radius);
     color: var(--gamut-text);
     font-family: var(--gamut-font-label);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: 1px;
     text-transform: uppercase;
     cursor: pointer;
     transition: background-color var(--gamut-transition);
@@ -567,15 +619,15 @@
    ======================================== */
 .gamut-lut__share-btn {
     width: 100%;
-    padding: 8px 16px;
+    padding: 10px 16px;
     background-color: transparent;
-    border: 1px solid rgba(160, 149, 85, 0.4);
+    border: 1px solid rgba(160, 149, 85, 0.3);
     border-radius: var(--gamut-border-radius);
     color: var(--gamut-text-muted);
     font-family: var(--gamut-font-label);
     font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     cursor: pointer;
     transition: border-color var(--gamut-transition), color var(--gamut-transition);
@@ -761,7 +813,7 @@
 .gamut-lut__images-section {
     margin-top: var(--gamut-section-spacing);
     padding-top: var(--gamut-section-spacing);
-    border-top: 2px solid var(--gamut-border);
+    border-top: 1px solid rgba(160, 149, 85, 0.3);
 }
 
 .gamut-lut__images-header {
@@ -774,11 +826,12 @@
 
 .gamut-lut__images-title {
     font-family: var(--gamut-font-heading);
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
     line-height: 1.3;
     color: var(--gamut-text);
     margin: 0;
+    letter-spacing: 0.01em;
 }
 
 .gamut-lut__images-description {

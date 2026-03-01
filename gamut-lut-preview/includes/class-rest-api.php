@@ -383,7 +383,7 @@ class Gamut_LUT_REST_API {
 
             $luts[] = array(
                 'id'       => $post->ID,
-                'title'    => $post->post_title,
+                'title'    => self::clean_lut_title( $post->post_title ),
                 'lut_size' => $lut_size ? (int) $lut_size : null,
             );
         }
@@ -395,6 +395,18 @@ class Gamut_LUT_REST_API {
             'lut_count'  => count( $luts ),
             'luts'       => $luts,
         );
+    }
+
+    /**
+     * Clean a LUT title by removing monitoring-size suffixes (ML, ml, Ml).
+     *
+     * Strips trailing " ML", " ml", " Ml", etc. from titles like "Dolce 02 Ml".
+     *
+     * @param string $title Raw post title.
+     * @return string Cleaned title.
+     */
+    public static function clean_lut_title( $title ) {
+        return trim( preg_replace( '/\s+[Mm][Ll]$/u', '', $title ) );
     }
 
     /**
