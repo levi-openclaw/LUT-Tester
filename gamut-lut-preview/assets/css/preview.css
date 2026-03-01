@@ -19,11 +19,17 @@
     --gamut-accent: #8b9a6b;
     --gamut-accent-hover: #9dab7e;
 
-    /* Controls — elevated surfaces for dropdowns, inputs, buttons */
+    /* Dark background palette */
+    --gamut-bg: #1e2319;
     --gamut-bg-elevated: #2a2f25;
     --gamut-bg-hover: #333a2d;
     --gamut-border: #3a3f34;
     --gamut-border-input: #4a5040;
+
+    /* Text — warm off-white hierarchy */
+    --gamut-text: #f0ede8;
+    --gamut-text-muted: #b8b3aa;
+    --gamut-text-dim: #8a857d;
 
     /* Status */
     --gamut-favorite: #d4553a;
@@ -41,12 +47,14 @@
 }
 
 /* ========================================
-   Root Container — Full-width background
+   Root Container — Dark background, full-width
    ======================================== */
 .gamut-lut {
     width: 100%;
     padding: 0 clamp(1rem, 3vw, 3rem);
     box-sizing: border-box;
+    background-color: var(--gamut-bg);
+    color: var(--gamut-text);
 }
 
 .gamut-lut *,
@@ -68,7 +76,7 @@
 }
 
 .gamut-lut__description {
-    opacity: 0.7;
+    color: var(--gamut-text-muted);
     margin: 0;
     max-width: 480px;
 }
@@ -107,7 +115,7 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    opacity: 0.55;
+    color: var(--gamut-text-dim);
     margin: 0;
 }
 
@@ -150,7 +158,7 @@
 .gamut-lut__grid-empty {
     padding: 1.5rem 0.5rem;
     text-align: center;
-    opacity: 0.5;
+    color: var(--gamut-text-dim);
     font-size: 0.8125rem;
 }
 
@@ -219,7 +227,7 @@
     align-items: center;
     justify-content: center;
     min-height: 400px;
-    opacity: 0.5;
+    color: var(--gamut-text-dim);
     border: 1px dashed var(--gamut-border);
     border-radius: var(--gamut-border-radius);
 }
@@ -262,14 +270,13 @@
     background: var(--gamut-bg-elevated);
     border: 1px solid var(--gamut-border-input);
     border-radius: var(--gamut-border-radius);
-    color: inherit;
-    opacity: 0.7;
+    color: var(--gamut-text-muted);
     cursor: pointer;
-    transition: opacity var(--gamut-transition), border-color var(--gamut-transition);
+    transition: color var(--gamut-transition), border-color var(--gamut-transition);
 }
 
 .gamut-lut__randomize-btn:hover {
-    opacity: 1;
+    color: var(--gamut-text);
     border-color: var(--gamut-accent);
 }
 
@@ -313,7 +320,7 @@
     line-height: 1;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    opacity: 0.55;
+    color: var(--gamut-text-dim);
 }
 
 /* ========================================
@@ -390,7 +397,7 @@
     height: 16px;
     border-radius: 50%;
     background: var(--gamut-accent);
-    border: 2px solid #f0ede8;
+    border: 2px solid var(--gamut-bg);
     cursor: pointer;
     transition: transform var(--gamut-transition-fast);
 }
@@ -404,7 +411,7 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2px solid #f0ede8;
+    border: 2px solid var(--gamut-bg);
     background: var(--gamut-accent);
     cursor: pointer;
     transition: transform var(--gamut-transition-fast);
@@ -469,7 +476,7 @@
 
 .gamut-lut__checkbox-label {
     font-size: 0.8125rem;
-    opacity: 0.7;
+    color: var(--gamut-text-muted);
 }
 
 /* ========================================
@@ -487,23 +494,22 @@
     padding: 10px 8px;
     background: transparent;
     border: none;
-    color: inherit;
-    opacity: 0.6;
+    color: var(--gamut-text-dim);
     font: inherit;
     font-size: 0.8125rem;
     cursor: pointer;
-    transition: background-color var(--gamut-transition), opacity var(--gamut-transition);
+    transition: background-color var(--gamut-transition), color var(--gamut-transition);
     text-align: center;
     white-space: nowrap;
 }
 
 .gamut-lut__segment:hover {
-    opacity: 0.85;
+    color: var(--gamut-text-muted);
 }
 
 .gamut-lut__segment--active {
     background: var(--gamut-bg-elevated);
-    opacity: 1;
+    color: var(--gamut-text);
 }
 
 .gamut-lut__segment:focus-visible {
@@ -517,17 +523,17 @@
    ======================================== */
 .gamut-lut__lut-toast {
     position: absolute;
-    bottom: 1rem;
+    bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%) translateY(8px);
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(4px);
-    color: rgba(255, 255, 255, 0.75);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding: 4px 10px;
+    padding: 8px 14px;
     border-radius: var(--gamut-border-radius);
     pointer-events: none;
     opacity: 0;
@@ -629,26 +635,26 @@
 /* Labels — bottom-positioned, always on image */
 .gamut-lut__comparison-label {
     position: absolute;
-    bottom: 1rem;
+    bottom: 1.25rem;
     z-index: 3;
     font-size: 0.6875rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: rgba(255, 255, 255, 0.75);
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(4px);
-    padding: 4px 10px;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    padding: 8px 14px;
     border-radius: var(--gamut-border-radius);
     pointer-events: none;
 }
 
 .gamut-lut__comparison-label--before {
-    left: 1rem;
+    left: 1.25rem;
 }
 
 .gamut-lut__comparison-label--after {
-    right: 1rem;
+    right: 1.25rem;
 }
 
 /* ========================================
@@ -702,7 +708,7 @@
 }
 
 .gamut-lut__cart-message--info {
-    opacity: 0.7;
+    color: var(--gamut-text-muted);
 }
 
 .gamut-lut__cart-message--error {
@@ -718,19 +724,18 @@
     background-color: transparent;
     border: 1px solid var(--gamut-border);
     border-radius: var(--gamut-border-radius);
-    color: inherit;
+    color: var(--gamut-text-muted);
     font: inherit;
     font-size: 0.8125rem;
     font-weight: 500;
     letter-spacing: 0.03em;
     cursor: pointer;
-    transition: border-color var(--gamut-transition), opacity var(--gamut-transition);
-    opacity: 0.7;
+    transition: border-color var(--gamut-transition), color var(--gamut-transition);
 }
 
 .gamut-lut__share-btn:hover {
     border-color: var(--gamut-accent);
-    opacity: 1;
+    color: var(--gamut-text);
 }
 
 .gamut-lut__share-message {
@@ -764,7 +769,7 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    opacity: 0.55;
+    color: var(--gamut-text-dim);
     margin: 0 0 0.75rem 0;
 }
 
@@ -801,7 +806,7 @@
 
 .gamut-lut__upsell-count {
     font-size: 0.6875rem;
-    opacity: 0.5;
+    color: var(--gamut-text-dim);
 }
 
 /* ========================================
@@ -817,16 +822,15 @@
     background: transparent;
     border: 1px solid var(--gamut-border);
     border-radius: var(--gamut-border-radius);
-    color: inherit;
-    opacity: 0.7;
+    color: var(--gamut-text-muted);
     cursor: pointer;
-    transition: border-color var(--gamut-transition), opacity var(--gamut-transition);
+    transition: border-color var(--gamut-transition), color var(--gamut-transition);
     flex-shrink: 0;
 }
 
 .gamut-lut__favorites-toggle:hover {
     border-color: var(--gamut-accent);
-    opacity: 1;
+    color: var(--gamut-text);
 }
 
 .gamut-lut__favorites-toggle--active {
