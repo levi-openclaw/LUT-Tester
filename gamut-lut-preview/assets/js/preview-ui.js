@@ -420,9 +420,11 @@ var GamutLutPreview = (function() {
 
         state.selectedImage = img;
 
-        // Show canvas, hide empty state.
+        // Show canvas, hide empty state — respect current compare mode.
         if (dom.emptyState) dom.emptyState.style.display = 'none';
-        if (dom.canvasWrap) dom.canvasWrap.style.display = 'block';
+        if (state.compareMode === 'none') {
+            if (dom.canvasWrap) dom.canvasWrap.style.display = 'block';
+        }
 
         // Scroll preview into view smoothly.
         scrollToPreview();
